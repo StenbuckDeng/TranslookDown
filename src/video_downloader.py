@@ -436,6 +436,17 @@ def api_open_folder():
     return jsonify({"ok": True})
 
 
+@app.route("/api/quit", methods=["POST"])
+def api_quit():
+    """Shutdown the application."""
+    def _shutdown():
+        import time
+        time.sleep(0.3)
+        os._exit(0)
+    threading.Thread(target=_shutdown, daemon=True).start()
+    return jsonify({"ok": True})
+
+
 @app.route("/api/qr")
 def api_qr():
     import socket
@@ -466,109 +477,75 @@ HTML_PAGE = r"""<!DOCTYPE html>
 
 :root {
   --bg: #f7f3df;
-  --bg-card: #fffcf0;
+  --bg-card: #fffdf5;
   --text: #725d42;
-  --text-light: #a08b6e;
+  --text-light: #9a835a;
+  --green: #82d5bb;
+  --green-dark: #3d7a5f;
   --blue: #889df0;
-  --blue-dark: #6a7fd4;
-  --blue-light: #b3c2f7;
+  --blue-dark: #5a6abf;
   --pink: #f8a6b2;
-  --pink-dark: #e0889a;
   --purple: #b77dee;
-  --purple-dark: #9a5fd4;
   --yellow: #f7cd67;
-  --yellow-dark: #e0b44a;
+  --orange: #e59266;
   --teal: #82d5bb;
-  --teal-dark: #5fb89a;
-  --green: #8ac68a;
-  --green-dark: #6aaa6a;
   --red: #fc736d;
-  --red-dark: #e05550;
+  --red-dark: #d94f4a;
   --radius-card: 20px;
   --radius-btn: 12px;
-  --radius-pill: 50px;
-  --shadow-btn: 0 4px 0;
-  --font: 'Nunito', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --shadow: 0 4px 12px rgba(114,93,66,0.1);
 }
 
 body {
-  font-family: var(--font);
+  overflow: hidden;
+  height: 100vh;
+  font-family: 'Nunito', 'Noto Sans SC', sans-serif;
   background: var(--bg);
   color: var(--text);
-  height: 100vh;
-  line-height: 1.6;
-  overflow: hidden;
-}
-
-/* ===== Decorative Background ===== */
-body::before {
-  content: '';
-  position: fixed;
-  top: -120px;
-  right: -120px;
-  width: 350px;
-  height: 350px;
-  background: radial-gradient(circle, rgba(136,157,240,0.15) 0%, transparent 70%);
-  border-radius: 50%;
-  z-index: 0;
-  pointer-events: none;
-}
-body::after {
-  content: '';
-  position: fixed;
-  bottom: -80px;
-  left: -80px;
-  width: 280px;
-  height: 280px;
-  background: radial-gradient(circle, rgba(248,166,178,0.12) 0%, transparent 70%);
-  border-radius: 50%;
-  z-index: 0;
-  pointer-events: none;
+  line-height: 1.5;
 }
 
 /* ===== Container ===== */
 .container {
-  max-width: 780px;
+  max-width: 920px;
   margin: 0 auto;
-  padding: 10px 14px 8px;
-  position: relative;
-  z-index: 1;
+  padding: 6px 14px 4px;
+  height: 100vh;
+  overflow: hidden;
 }
 
-/* ===== Header Row ===== */
+/* ===== Header ===== */
 .header-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 4px 0 6px;
-  margin-bottom: 8px;
+  padding: 2px 0 4px;
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .logo-wrap {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.logo-wrap svg {
-  width: 32px;
-  height: 32px;
-}
 .logo-wrap h1 {
-  font-size: 1.2rem;
-  font-weight: 800;
+  font-size: 1.15rem;
   color: var(--text);
-  letter-spacing: -0.5px;
+  font-weight: 800;
 }
 .version-badge {
-  display: inline-block;
-  background: var(--blue);
-  color: #fff;
-  font-size: 0.7rem;
-  font-weight: 800;
+  background: var(--yellow);
+  color: var(--text);
+  font-size: 0.65rem;
   padding: 2px 8px;
-  border-radius: var(--radius-pill);
+  border-radius: 8px;
+  font-weight: 700;
+  display: inline-block;
   vertical-align: middle;
   margin-left: 4px;
-  box-shadow: 0 2px 0 var(--blue-dark);
 }
 .time-widget-inline {
   display: flex;
@@ -592,25 +569,499 @@ body::after {
   color: var(--text);
   letter-spacing: 1px;
 }
+.btn-close {
+  background: var(--red-dark);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  width: 30px;
+  height: 30px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.15s;
+  box-shadow: 0 2px 4px rgba(252,115,109,0.3);
+}
+.btn-close:hover { opacity: 0.8; }
 
-.header-right {
+/* ===== Divider Wave ===== */
+.divider-wave {
+  height: 8px;
+  background: repeating-linear-gradient(90deg, var(--yellow) 0px, var(--yellow) 20px, transparent 20px, transparent 24px, var(--yellow) 24px, var(--yellow) 28px, transparent 28px, transparent 32px);
+  border-radius: 4px;
+  margin: 3px 0 6px;
+  opacity: 0.6;
+}
+
+/* ===== Main Grid (3 columns) ===== */
+.main-grid {
+  display: grid;
+  grid-template-columns: 130px 1fr 170px;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+/* ===== Quick Access (Left Column) ===== */
+.quick-access {
+  background: var(--bg-card);
+  border: 2px solid #ede6d3;
+  border-radius: var(--radius-card);
+  padding: 8px;
+  box-shadow: var(--shadow);
+}
+.quick-access-title {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: var(--text-light);
+  text-align: center;
+  margin-bottom: 6px;
+  letter-spacing: 1px;
+}
+.quick-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 2px;
+  border-radius: 12px;
+  transition: background 0.15s;
+  width: 100%;
+}
+.quick-btn:hover {
+  background: rgba(114,93,66,0.06);
+}
+.quick-btn-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.12);
+}
+.quick-btn-label {
+  font-size: 0.68rem;
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* ===== Main Panel (Center Column) ===== */
+.main-panel {
+  background: var(--bg-card);
+  border: 2px solid #ede6d3;
+  border-radius: var(--radius-card);
+  padding: 10px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+}
+.panel-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 6px;
+  border-bottom: 2px solid #ede6d3;
+}
+.panel-tab {
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-light);
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.15s;
+  font-family: 'Nunito', 'Noto Sans SC', sans-serif;
+}
+.panel-tab.active {
+  color: var(--text);
+  border-bottom-color: var(--blue);
+}
+.panel-content {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+.panel-content::-webkit-scrollbar {
+  width: 5px;
+}
+.panel-content::-webkit-scrollbar-thumb {
+  background: #d4c9b0;
+  border-radius: 3px;
+}
+
+/* ===== Input Area (inside main panel) ===== */
+.input-area {
+  margin-bottom: 6px;
+}
+.input-row {
+  display: flex;
+  gap: 6px;
+}
+.input-row input {
+  flex: 1;
+  padding: 7px 10px;
+  border: 2px solid #ede6d3;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  font-family: 'Nunito', 'Noto Sans SC', sans-serif;
+}
+.input-row input:focus {
+  border-color: var(--blue);
+}
+.btn-paste {
+  padding: 7px 10px;
+  background: var(--yellow);
+  color: var(--text);
+  border: none;
+  border-radius: 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 3px 0 #d4b44a;
+  white-space: nowrap;
+  font-family: 'Nunito', 'Noto Sans SC', sans-serif;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+.btn-paste:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 0 #d4b44a;
+}
+.btn-paste:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #d4b44a;
+}
+.btn-download {
+  padding: 7px 14px;
+  background: var(--blue);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--blue-dark);
+  white-space: nowrap;
+  font-family: 'Nunito', 'Noto Sans SC', sans-serif;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+.btn-download:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 0 var(--blue-dark);
+}
+.btn-download:active {
+  box-shadow: 0 1px 0 var(--blue-dark);
+  transform: translateY(2px);
+}
+
+/* ===== Options Panel (Right Column) ===== */
+.options-panel {
+  background: var(--bg-card);
+  border: 2px solid #ede6d3;
+  border-radius: var(--radius-card);
+  padding: 14px;
+  box-shadow: var(--shadow);
+}
+.options-title {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--text-light);
+  text-align: center;
+  margin-bottom: 10px;
+  letter-spacing: 1px;
+}
+.option-group {
+  margin-bottom: 10px;
+}
+.option-label {
+  font-size: 0.78rem;
+  color: var(--text);
+  font-weight: 600;
+  margin-bottom: 4px;
+  display: block;
+}
+.quality-select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 2px solid #ede6d3;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Nunito', 'Noto Sans SC', sans-serif;
+  outline: none;
+  cursor: pointer;
+}
+.quality-select:focus {
+  border-color: var(--blue);
+}
+.toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+.toggle-row-label {
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
+/* Toggle switch */
+.toggle-switch {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+}
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #d4c9b0;
+  border-radius: 50px;
+  transition: background 0.3s;
+}
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.3s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+.toggle-switch input:checked + .toggle-slider {
+  background: var(--green-dark);
+}
+.toggle-switch input:checked + .toggle-slider::before {
+  transform: translateX(18px);
+}
+
+/* ===== Download Items ===== */
+.download-item {
+  padding: 10px;
+  margin-bottom: 8px;
+  background: var(--bg);
+  border-radius: 12px;
+  border: 1.5px solid #ede6d3;
+}
+.download-url {
+  font-size: 0.75rem;
+  color: var(--text-light);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 6px;
+}
+.progress-row {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-bottom: 6px;
 }
-.btn-qr {
+.progress-bar-wrap {
+  flex: 1;
+  background: #ede6d3;
+  border-radius: 50px;
+  height: 10px;
+  overflow: hidden;
+  position: relative;
+}
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 50px;
+  background: linear-gradient(90deg, var(--teal), var(--green));
+  transition: width 0.4s ease;
+  min-width: 0;
+}
+.progress-bar-fill.error {
+  background: linear-gradient(90deg, var(--pink), var(--red));
+}
+.download-meta {
+  font-size: 0.72rem;
+  color: var(--text-light);
+  display: flex;
+  justify-content: space-between;
+}
+.download-meta .speed {
+  font-weight: 700;
+  color: var(--green-dark);
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 50px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+.status-badge.downloading { background: #d4e4fc; color: var(--blue-dark); }
+.status-badge.completed { background: #d4edda; color: #2d7a3a; }
+.status-badge.error { background: #fce4e4; color: var(--red-dark); }
+.status-badge.starting { background: var(--yellow); color: #8a6d2b; }
+
+.empty-state {
+  text-align: center;
+  padding: 16px 10px;
+  color: var(--text-light);
+  font-size: 0.85rem;
+}
+.empty-state .emoji { font-size: 1.6rem; margin-bottom: 8px; }
+
+/* ===== Running Animal Animation ===== */
+@keyframes animalRun {
+  0% { transform: translateX(-10px); }
+  50% { transform: translateX(10px); }
+  100% { transform: translateX(-10px); }
+}
+@keyframes animalBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+.running-animal {
+  display: inline-block;
+  animation: animalRun 0.5s ease-in-out infinite;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.running-animal .body {
+  display: inline-block;
+  animation: animalBounce 0.25s ease-in-out infinite;
+}
+
+/* ===== History Items ===== */
+.history-item {
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  background: var(--bg);
+  border-radius: 10px;
+  border: 1.5px solid #ede6d3;
+}
+.history-url {
+  font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 4px;
+}
+.history-meta {
+  font-size: 0.7rem;
+  color: var(--text-light);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.history-actions {
+  display: flex;
+  gap: 4px;
+}
+.btn-sm {
+  padding: 3px 8px;
+  font-size: 0.68rem;
+  border-radius: 8px;
+  border: none;
+  font-weight: 700;
+  font-family: 'Nunito', 'Noto Sans SC', sans-serif;
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+.btn-sm:active { transform: translateY(1px); }
+.btn-sm.open { background: var(--teal); color: #fff; box-shadow: 0 2px 0 var(--green-dark); }
+.btn-sm.copy { background: var(--purple); color: #fff; box-shadow: 0 2px 0 #9a5fd4; }
+.btn-sm.delete { background: var(--pink); color: #fff; box-shadow: 0 2px 0 #e0889a; }
+
+.btn-clear-all {
+  display: block;
+  margin: 8px auto 0;
+  padding: 6px 16px;
+  background: var(--red);
+  color: #fff;
+  border: none;
+  border-radius: 50px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-family: 'Nunito', 'Noto Sans SC', sans-serif;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--red-dark);
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+.btn-clear-all:hover { transform: translateY(-1px); box-shadow: 0 4px 0 var(--red-dark); }
+.btn-clear-all:active { transform: translateY(1px); box-shadow: 0 2px 0 var(--red-dark); }
+
+/* ===== FAQ Section ===== */
+.faq-section {
+  margin-top: 0;
+}
+.faq-title {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--text-light);
+  margin-bottom: 4px;
+  letter-spacing: 1px;
+}
+.faq-item {
   background: var(--bg-card);
   border: 2px solid #ede6d3;
   border-radius: 10px;
-  padding: 6px 10px;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: transform 0.12s, box-shadow 0.12s;
-  box-shadow: 0 2px 6px rgba(114,93,66,0.08);
+  margin-bottom: 3px;
+  overflow: hidden;
 }
-.btn-qr:hover { transform: translateY(-1px); }
-.btn-qr:active { transform: translateY(1px); }
+.faq-question {
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  font-family: 'Nunito', 'Noto Sans SC', sans-serif;
+}
+.faq-answer {
+  padding: 0 10px;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease, padding 0.3s ease;
+  font-size: 0.72rem;
+  color: var(--text-light);
+  line-height: 1.5;
+}
+.faq-item.open .faq-answer {
+  max-height: 80px;
+  padding: 0 10px 6px;
+}
+.faq-item.open .faq-arrow {
+  transform: rotate(180deg);
+}
+.faq-arrow {
+  transition: transform 0.2s;
+  font-size: 0.7rem;
+}
 
+/* ===== QR Code Popup ===== */
 .qr-popup {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -653,494 +1104,6 @@ body::after {
 }
 .qr-popup-close:hover { color: var(--red-dark); }
 
-/* ===== Input Card ===== */
-.input-card {
-  background: var(--blue);
-  border-radius: var(--radius-card);
-  padding: 14px 16px 12px;
-  margin-bottom: 8px;
-  box-shadow: var(--shadow-btn) var(--blue-dark);
-  transition: transform 0.15s, box-shadow 0.15s;
-}
-.input-card:active {
-  transform: translateY(2px);
-  box-shadow: 0 2px 0 var(--blue-dark);
-}
-.input-card label {
-  display: block;
-  color: #fff;
-  font-weight: 700;
-  font-size: 0.85rem;
-  margin-bottom: 8px;
-}
-.input-row {
-  display: flex;
-  gap: 8px;
-  align-items: stretch;
-}
-.input-row input[type="text"] {
-  flex: 1;
-  padding: 10px 14px;
-  border: 3px solid rgba(255,255,255,0.5);
-  border-radius: var(--radius-btn);
-  font-size: 0.9rem;
-  font-family: var(--font);
-  background: rgba(255,255,255,0.92);
-  color: var(--text);
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-.input-row input[type="text"]:focus {
-  border-color: #fff;
-  box-shadow: 0 0 0 3px rgba(255,255,255,0.3);
-}
-.input-row input[type="text"]::placeholder {
-  color: #b0a898;
-}
-.btn-paste {
-  padding: 10px 12px;
-  background: rgba(255,255,255,0.25);
-  color: #fff;
-  border: 3px solid rgba(255,255,255,0.4);
-  border-radius: var(--radius-btn);
-  font-size: 0.95rem;
-  font-family: var(--font);
-  cursor: pointer;
-  transition: background 0.2s, transform 0.12s;
-  white-space: nowrap;
-  font-weight: 700;
-}
-.btn-paste:hover {
-  background: rgba(255,255,255,0.4);
-  transform: translateY(-1px);
-}
-.btn-paste:active {
-  transform: translateY(1px);
-}
-
-.btn-row {
-  display: flex;
-  gap: 10px;
-  margin-top: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.btn-primary {
-  flex: 1;
-  min-width: 160px;
-  padding: 10px 18px;
-  background: var(--yellow);
-  color: var(--text);
-  border: none;
-  border-radius: var(--radius-btn);
-  font-size: 0.92rem;
-  font-weight: 700;
-  font-family: var(--font);
-  cursor: pointer;
-  box-shadow: var(--shadow-btn) var(--yellow-dark);
-  transition: transform 0.12s, box-shadow 0.12s, opacity 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 5px 0 var(--yellow-dark); }
-.btn-primary:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--yellow-dark); }
-.btn-primary:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: var(--shadow-btn) var(--yellow-dark);
-}
-
-.btn-text {
-  background: none;
-  border: none;
-  color: rgba(255,255,255,0.85);
-  font-size: 0.78rem;
-  font-weight: 600;
-  font-family: var(--font);
-  cursor: pointer;
-  padding: 8px 4px;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  transition: color 0.2s;
-  white-space: nowrap;
-}
-.btn-text:hover { color: #fff; }
-
-.spinner {
-  display: inline-block;
-  width: 18px;
-  height: 18px;
-  border: 3px solid rgba(114,93,66,0.2);
-  border-top-color: var(--text);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ===== Options Panel ===== */
-.options-panel {
-  background: var(--bg-card);
-  border: 2px solid #ede6d3;
-  border-radius: var(--radius-card);
-  margin-bottom: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 10px rgba(114,93,66,0.06);
-}
-.options-toggle {
-  width: 100%;
-  padding: 10px 16px;
-  border: none;
-  background: none;
-  font-size: 0.85rem;
-  font-weight: 700;
-  font-family: var(--font);
-  color: var(--text);
-  cursor: pointer;
-  text-align: left;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  transition: background 0.2s;
-}
-.options-toggle:hover { background: rgba(136,157,240,0.06); }
-.options-toggle .arrow {
-  font-size: 0.8rem;
-  transition: transform 0.25s;
-  flex-shrink: 0;
-}
-.options-panel.open .options-toggle .arrow { transform: rotate(180deg); }
-.options-body {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.35s ease, padding 0.35s ease;
-  padding: 0 20px;
-}
-.options-panel.open .options-body {
-  max-height: 400px;
-  padding: 0 20px 18px;
-}
-
-.option-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 0;
-  border-bottom: 1px solid #f0ebd8;
-}
-.option-row:last-child { border-bottom: none; }
-.option-label {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--text);
-}
-.option-label small {
-  display: block;
-  font-size: 0.7rem;
-  font-weight: 500;
-  color: var(--text-light);
-  margin-top: 2px;
-}
-
-/* Quality dropdown */
-.quality-select {
-  padding: 6px 10px;
-  border: 2px solid #ede6d3;
-  border-radius: var(--radius-btn);
-  font-size: 0.8rem;
-  font-family: var(--font);
-  font-weight: 600;
-  color: var(--text);
-  background: var(--bg);
-  outline: none;
-  cursor: pointer;
-  transition: border-color 0.2s;
-}
-.quality-select:focus { border-color: var(--blue); }
-
-/* Toggle switch */
-.toggle-switch {
-  position: relative;
-  width: 40px;
-  height: 22px;
-  flex-shrink: 0;
-}
-.toggle-switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-.toggle-slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: #d4c9b0;
-  border-radius: var(--radius-pill);
-  transition: background 0.3s;
-}
-.toggle-slider::before {
-  content: '';
-  position: absolute;
-  height: 16px;
-  width: 16px;
-  left: 3px;
-  bottom: 3px;
-  background: #fff;
-  border-radius: 50%;
-  transition: transform 0.3s;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-}
-.toggle-switch input:checked + .toggle-slider {
-  background: var(--green-dark);
-}
-.toggle-switch input:checked + .toggle-slider::before {
-  transform: translateX(18px);
-}
-
-/* ===== Tabs ===== */
-.tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-.tab-btn {
-  flex: 1;
-  padding: 8px 12px;
-  border: 3px solid transparent;
-  border-radius: var(--radius-pill);
-  font-size: 0.85rem;
-  font-weight: 700;
-  font-family: var(--font);
-  cursor: pointer;
-  background: var(--bg-card);
-  color: var(--text-light);
-  transition: all 0.2s;
-  text-align: center;
-}
-.tab-btn.active {
-  background: var(--blue);
-  color: #fff;
-  border-color: var(--blue-dark);
-  box-shadow: var(--shadow-btn) var(--blue-dark);
-}
-.tab-btn:not(.active):hover {
-  background: var(--blue-light);
-  color: var(--text);
-}
-
-.tab-content { display: none; }
-.tab-content.active { display: block; }
-
-/* ===== Scrollable Content Area ===== */
-.tab-content-area {
-  height: calc(100vh - 310px);
-  min-height: 180px;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-.tab-content-area::-webkit-scrollbar {
-  width: 6px;
-}
-.tab-content-area::-webkit-scrollbar-track {
-  background: transparent;
-}
-.tab-content-area::-webkit-scrollbar-thumb {
-  background: #d4c9b0;
-  border-radius: 3px;
-}
-
-/* ===== Download Items ===== */
-.download-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.download-item {
-  background: var(--bg-card);
-  border-radius: var(--radius-card);
-  padding: 10px 14px;
-  box-shadow: 0 2px 8px rgba(114,93,66,0.08);
-  transition: transform 0.15s;
-}
-.download-item:hover { transform: translateY(-1px); }
-
-.download-item .url {
-  font-size: 0.78rem;
-  color: var(--text-light);
-  word-break: break-all;
-  margin-bottom: 6px;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.progress-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.progress-bar-wrap {
-  flex: 1;
-  background: #ede6d3;
-  border-radius: var(--radius-pill);
-  height: 10px;
-  overflow: hidden;
-  position: relative;
-}
-.progress-bar-fill {
-  height: 100%;
-  border-radius: var(--radius-pill);
-  background: linear-gradient(90deg, var(--teal), var(--green));
-  transition: width 0.4s ease;
-  min-width: 0;
-}
-.progress-bar-fill.error {
-  background: linear-gradient(90deg, var(--pink), var(--red));
-}
-
-.download-meta {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 4px;
-  font-size: 0.75rem;
-  color: var(--text-light);
-  flex-wrap: wrap;
-  gap: 4px;
-}
-.download-meta .speed { font-weight: 700; color: var(--teal-dark); }
-
-.status-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: var(--radius-pill);
-  font-size: 0.7rem;
-  font-weight: 700;
-}
-.status-badge.downloading { background: var(--blue-light); color: var(--blue-dark); }
-.status-badge.completed { background: #d4edda; color: #2d7a3a; }
-.status-badge.error { background: #fce4e4; color: var(--red-dark); }
-.status-badge.starting { background: var(--yellow); color: #8a6d2b; }
-
-.empty-state {
-  text-align: center;
-  padding: 16px 10px;
-  color: var(--text-light);
-  font-size: 0.85rem;
-}
-.empty-state .emoji { font-size: 1.6rem; margin-bottom: 8px; }
-
-/* ===== Running Animal Animation ===== */
-@keyframes animalRun {
-  0% { transform: translateX(-10px); }
-  50% { transform: translateX(10px); }
-  100% { transform: translateX(-10px); }
-}
-@keyframes animalBounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
-}
-.running-animal {
-  display: inline-block;
-  animation: animalRun 0.5s ease-in-out infinite;
-  font-size: 1.1rem;
-  flex-shrink: 0;
-}
-.running-animal .body {
-  display: inline-block;
-  animation: animalBounce 0.25s ease-in-out infinite;
-}
-
-/* ===== History Items ===== */
-.history-item {
-  background: var(--bg-card);
-  border-radius: var(--radius-card);
-  padding: 8px 14px;
-  box-shadow: 0 2px 8px rgba(114,93,66,0.08);
-  margin-bottom: 6px;
-  transition: transform 0.15s;
-}
-.history-item:hover { transform: translateY(-1px); }
-
-.history-item .top-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 10px;
-  margin-bottom: 6px;
-}
-.history-item .url {
-  font-size: 0.78rem;
-  color: var(--text-light);
-  word-break: break-all;
-  flex: 1;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.history-item .file-row {
-  font-size: 0.75rem;
-  color: var(--text-light);
-  margin-bottom: 4px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.history-item .file-row span {
-  cursor: pointer;
-  color: var(--blue-dark);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-.history-item .file-row span:hover { color: var(--purple-dark); }
-
-.history-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.btn-sm {
-  padding: 4px 10px;
-  border: none;
-  border-radius: var(--radius-pill);
-  font-size: 0.72rem;
-  font-weight: 700;
-  font-family: var(--font);
-  cursor: pointer;
-  transition: transform 0.12s, box-shadow 0.12s;
-}
-.btn-sm:active { transform: translateY(1px); }
-.btn-sm.open { background: var(--teal); color: #fff; box-shadow: 0 3px 0 var(--teal-dark); }
-.btn-sm.copy { background: var(--purple); color: #fff; box-shadow: 0 3px 0 var(--purple-dark); }
-.btn-sm.delete { background: var(--pink); color: #fff; box-shadow: 0 3px 0 var(--pink-dark); }
-
-.btn-clear-all {
-  display: block;
-  margin: 8px auto 0;
-  padding: 6px 16px;
-  background: var(--red);
-  color: #fff;
-  border: none;
-  border-radius: var(--radius-pill);
-  font-size: 0.78rem;
-  font-weight: 700;
-  font-family: var(--font);
-  cursor: pointer;
-  box-shadow: 0 3px 0 var(--red-dark);
-  transition: transform 0.12s, box-shadow 0.12s;
-}
-.btn-clear-all:hover { transform: translateY(-1px); box-shadow: 0 4px 0 var(--red-dark); }
-.btn-clear-all:active { transform: translateY(1px); box-shadow: 0 2px 0 var(--red-dark); }
-
 /* ===== Toast ===== */
 .toast-container {
   position: fixed;
@@ -1158,7 +1121,7 @@ body::after {
   background: var(--text);
   color: #fff;
   padding: 8px 18px;
-  border-radius: var(--radius-pill);
+  border-radius: 50px;
   font-size: 0.82rem;
   font-weight: 600;
   box-shadow: 0 4px 16px rgba(0,0,0,0.15);
@@ -1178,15 +1141,27 @@ body::after {
   from { opacity: 1; transform: translateY(0); }
   to { opacity: 0; transform: translateY(20px); }
 }
+
+/* ===== Spinner ===== */
+.spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 3px solid rgba(114,93,66,0.2);
+  border-top-color: var(--text);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
 
 <div class="container">
-  <!-- Header: logo + title + time widget in one row -->
+  <!-- Header -->
   <div class="header-row">
     <div class="logo-wrap">
-      <svg viewBox="0 0 60 60" width="32" height="32">
+      <svg viewBox="0 0 60 60" width="28" height="28">
         <ellipse cx="30" cy="35" rx="22" ry="20" fill="#8B6F47"/>
         <ellipse cx="30" cy="32" rx="18" ry="16" fill="#A0845C"/>
         <circle cx="22" cy="28" r="3" fill="#333"/>
@@ -1201,119 +1176,159 @@ body::after {
         <circle cx="48" cy="50" r="1.5" fill="#C4A265"/>
         <circle cx="30" cy="54" r="2.5" fill="#C4A265"/>
       </svg>
-      <h1>TranslookDown <span class="version-badge">V4</span></h1>
+      <h1>&#128560; TranslookDown <span class="version-badge">V4</span></h1>
     </div>
     <div class="header-right">
       <div class="time-widget-inline">
         <span id="timeDay" class="time-day">MON</span>
         <span id="timeClock" class="time-clock">00:00</span>
       </div>
-      <button class="btn-qr" onclick="toggleQr()" title="手机扫码访问">&#128241;</button>
+      <button class="btn-close" onclick="closeApp()" title="关闭">&#10005;</button>
     </div>
   </div>
 
-  <!-- QR Code Popup -->
-  <div class="qr-popup" id="qrPopup" style="display:none">
-    <div class="qr-popup-content">
-      <div class="qr-popup-title">&#128241; 手机扫码访问</div>
-      <img id="qrCode" src="" alt="QR Code" style="width:110px;height:110px;border-radius:10px;">
-      <div class="qr-popup-url" id="mobileUrl"></div>
-      <button class="qr-popup-close" onclick="toggleQr()">&#10005;</button>
-    </div>
-  </div>
+  <!-- Divider Wave -->
+  <div class="divider-wave"></div>
 
-  <!-- Input Card -->
-  <div class="input-card">
-    <label>&#128279; 粘贴视频链接</label>
-    <div class="input-row">
-      <input type="text" id="urlInput" placeholder="https://..." autocomplete="off" spellcheck="false">
-      <button class="btn-paste" id="pasteBtn" onclick="pasteAndDownload()" title="从剪贴板粘贴并下载">&#128203; 粘贴</button>
-    </div>
-    <div class="btn-row">
-      <button class="btn-primary" id="downloadBtn" onclick="startDownload()">
-        <span id="btnText">&#11015;&#65039; 开始下载</span>
+  <!-- Main 3-Column Grid -->
+  <div class="main-grid">
+    <!-- Left: Quick Access -->
+    <div class="quick-access">
+      <div class="quick-access-title">QUICK ACCESS</div>
+      <button class="quick-btn" onclick="focusInput()">
+        <div class="quick-btn-icon" style="background:#889df0;">&#128229;</div>
+        <div class="quick-btn-label">&#19979;&#36733;</div>
       </button>
-      <button class="btn-text" onclick="openFolder()">&#128193; 文件夹</button>
+      <button class="quick-btn" onclick="openFolder()">
+        <div class="quick-btn-icon" style="background:#82d5bb;">&#128194;</div>
+        <div class="quick-btn-label">&#25991;&#20214;&#22841;</div>
+      </button>
+      <button class="quick-btn" onclick="showHistory()">
+        <div class="quick-btn-icon" style="background:#b77dee;">&#128203;</div>
+        <div class="quick-btn-label">&#21382;&#21490;</div>
+      </button>
+      <button class="quick-btn" onclick="toggleQr()">
+        <div class="quick-btn-icon" style="background:#f8a6b2;">&#128241;</div>
+        <div class="quick-btn-label">&#25195;&#30721;</div>
+      </button>
     </div>
-  </div>
 
-  <!-- Options (collapsed by default, compact) -->
-  <div class="options-panel" id="optionsPanel">
-    <button class="options-toggle" onclick="toggleOptions()">
-      <span>&#9881; 选项</span>
-      <span class="arrow">&#9660;</span>
-    </button>
-    <div class="options-body">
-      <div class="option-row">
-        <div class="option-label">
-          画质选择
-          <small>选择视频下载画质</small>
+    <!-- Center: Main Panel -->
+    <div class="main-panel">
+      <!-- Input Area -->
+      <div class="input-area">
+        <div class="input-row">
+          <input type="text" id="urlInput" placeholder="&#31896;&#36148;&#35270;&#39057;&#38142;&#25509; https://..." autocomplete="off" spellcheck="false">
+          <button class="btn-paste" id="pasteBtn" onclick="pasteAndDownload()" title="&#31896;&#36148;&#22686;&#32493;&#31434;&#19988;&#19979;&#36733;">&#128203; &#31896;&#36148;</button>
+          <button class="btn-download" id="downloadBtn" onclick="startDownload()">
+            <span id="btnText">&#11015;&#65039; &#19979;&#36733;</span>
+          </button>
         </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="panel-tabs">
+        <button class="panel-tab active" id="tab_downloads" onclick="switchTab('downloads')">&#11015;&#65039; &#19979;&#36733; (<span id="downloadCount">0</span>)</button>
+        <button class="panel-tab" id="tab_history" onclick="switchTab('history')">&#128203; &#21382;&#21490; (<span id="historyCount">0</span>)</button>
+      </div>
+
+      <!-- Panel Content (scrollable) -->
+      <div class="panel-content">
+        <div id="contentDownloads">
+          <div id="downloadList">
+            <div class="empty-state">
+              <div class="emoji">&#127744;</div>
+              <div>&#26242;&#26080;&#19979;&#36733;&#20219;&#21150;&#65292;&#31896;&#36148;&#38142;&#25509;&#24320;&#22987;&#19979;&#36733;&#21543;~</div>
+            </div>
+          </div>
+        </div>
+        <div id="contentHistory" style="display:none;">
+          <div id="historyList">
+            <div class="empty-state">
+              <div class="emoji">&#128214;</div>
+              <div>&#36824;&#27809;&#26377;&#19979;&#36733;&#35760;&#24405;&#21734;~</div>
+            </div>
+          </div>
+          <button class="btn-clear-all" id="clearAllBtn" style="display:none" onclick="clearHistory()">&#128465;&#65039; &#28165;&#31354;</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Options Panel -->
+    <div class="options-panel">
+      <div class="options-title">&#9881; &#36873;&#39033;</div>
+
+      <div class="option-group">
+        <span class="option-label">&#30011;&#36136;&#36873;&#25321;</span>
         <select class="quality-select" id="optFormat">
-          <option value="bestvideo+bestaudio/best">最佳画质</option>
+          <option value="bestvideo+bestaudio/best">&#26368;&#20339;&#30011;&#36136;</option>
           <option value="bestvideo[height<=1080]+bestaudio/best[height<=1080]">1080p</option>
           <option value="bestvideo[height<=720]+bestaudio/best[height<=720]">720p</option>
-          <option value="bestaudio">仅音频</option>
+          <option value="bestaudio">&#20165;&#38899;&#39057;</option>
         </select>
       </div>
-      <div class="option-row">
-        <div class="option-label">
-          下载字幕
-          <small>嵌入英文/中文字幕</small>
+
+      <div class="option-group">
+        <div class="toggle-row">
+          <span class="toggle-row-label">&#23383;&#24149;</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="optSubtitle">
+            <span class="toggle-slider"></span>
+          </label>
         </div>
-        <label class="toggle-switch">
-          <input type="checkbox" id="optSubtitle">
-          <span class="toggle-slider"></span>
-        </label>
       </div>
-      <div class="option-row">
-        <div class="option-label">
-          下载缩略图
-          <small>嵌入视频封面图</small>
+
+      <div class="option-group">
+        <div class="toggle-row">
+          <span class="toggle-row-label">&#32553;&#30053;&#22270;</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="optThumbnail">
+            <span class="toggle-slider"></span>
+          </label>
         </div>
-        <label class="toggle-switch">
-          <input type="checkbox" id="optThumbnail">
-          <span class="toggle-slider"></span>
-        </label>
       </div>
-      <div class="option-row">
-        <div class="option-label">
-          嵌入元数据
-          <small>嵌入视频信息和章节</small>
+
+      <div class="option-group">
+        <div class="toggle-row">
+          <span class="toggle-row-label">&#20803;&#25968;&#25454;</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="optMetadata">
+            <span class="toggle-slider"></span>
+          </label>
         </div>
-        <label class="toggle-switch">
-          <input type="checkbox" id="optMetadata">
-          <span class="toggle-slider"></span>
-        </label>
       </div>
     </div>
   </div>
 
-  <!-- Tabs -->
-  <div class="tabs">
-    <button class="tab-btn active" id="tabDownloads" onclick="switchTab('downloads')">&#11015;&#65039; 下载 (<span id="downloadCount">0</span>)</button>
-    <button class="tab-btn" id="tabHistory" onclick="switchTab('history')">&#128203; 历史 (<span id="historyCount">0</span>)</button>
+  <!-- FAQ Section -->
+  <div class="faq-section">
+    <div class="faq-title">&#10067; &#24120;&#35265;&#38382;&#39064;</div>
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <button class="faq-question">&#25903;&#25345;&#21738;&#20123;&#32593;&#31449;&#65311; <span class="faq-arrow">&#9660;</span></button>
+      <div class="faq-answer">&#25903;&#25345; YouTube&#12289;X (Twitter)&#12289;LinkedIn&#12289;B&#31449;&#12289;&#25293;&#38899;&#12289;Instagram&#12289;TikTok &#31561;&#25968;&#21315;&#20010;&#32593;&#31449;&#12290;</div>
+    </div>
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <button class="faq-question">&#35270;&#39057;&#20445;&#23384;&#22312;&#21738;&#37324;&#65311; <span class="faq-arrow">&#9660;</span></button>
+      <div class="faq-answer">&#20445;&#23384;&#22312;&#31243;&#24207;&#25152;&#22312;&#30446;&#24405;&#30340; downloads &#25991;&#20214;&#22841;&#20013;&#12290;&#28857;&#20987;&#24038;&#20391;&#12298;&#25991;&#20214;&#22841;&#12299;&#25353;&#38062;&#21487;&#24555;&#36895;&#25171;&#24320;&#12290;</div>
+    </div>
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <button class="faq-question">&#19979;&#36733;&#22833;&#36133;&#24613;&#20040;&#21150;&#65311; <span class="faq-arrow">&#9660;</span></button>
+      <div class="faq-answer">&#37096;&#20998;&#32593;&#31449;&#21487;&#33021;&#26377;&#22320;&#21306;&#38480;&#21046;&#25110;&#38656;&#35201;&#30331;&#24405;&#12290;&#21487;&#23581;&#35797;&#26356;&#26032; yt-dlp &#21040;&#26368;&#26032;&#29256;&#26412;&#12290;</div>
+    </div>
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <button class="faq-question">&#25163;&#26426;&#33021;&#35775;&#38382;&#21527;&#65311; <span class="faq-arrow">&#9660;</span></button>
+      <div class="faq-answer">&#21487;&#20197;&#65281;&#30830;&#20445;&#25163;&#26426;&#21644;&#30005;&#33041;&#22312;&#21516;&#19968;&#23616;&#22495;&#32593;&#65292;&#28857;&#20987;&#24038;&#19978;&#35282;&#12298;&#128241;&#25195;&#30721;&#12299;&#25353;&#38062;&#65292;&#25195;&#25551;&#20108;&#32500;&#30721;&#21363;&#21487;&#35775;&#38382;&#12290;</div>
+    </div>
   </div>
+</div>
 
-  <!-- Scrollable content area -->
-  <div class="tab-content-area">
-    <div class="tab-content active" id="contentDownloads">
-      <div class="download-list" id="downloadList">
-        <div class="empty-state">
-          <div class="emoji">&#127744;</div>
-          <div>暂无下载任务，粘贴链接开始下载吧~</div>
-        </div>
-      </div>
-    </div>
-    <div class="tab-content" id="contentHistory">
-      <div id="historyList">
-        <div class="empty-state">
-          <div class="emoji">&#128214;</div>
-          <div>还没有下载记录哦~</div>
-        </div>
-      </div>
-      <button class="btn-clear-all" id="clearAllBtn" style="display:none" onclick="clearHistory()">&#128465;&#65039; 清空</button>
-    </div>
+<!-- QR Code Popup -->
+<div class="qr-popup" id="qrPopup" style="display:none">
+  <div class="qr-popup-content">
+    <div class="qr-popup-title">&#128241; &#25163;&#26426;&#25195;&#30721;&#35775;&#38382;</div>
+    <img id="qrCode" src="" alt="QR Code" style="width:110px;height:110px;border-radius:10px;">
+    <div class="qr-popup-url" id="mobileUrl"></div>
+    <button class="qr-popup-close" onclick="toggleQr()">&#10005;</button>
   </div>
 </div>
 
@@ -1369,7 +1384,11 @@ async function pasteAndDownload() {
 
 // ===== Options Panel =====
 function toggleOptions() {
-  document.getElementById('optionsPanel').classList.toggle('open');
+  // No longer used in new layout - options are always visible
+}
+
+function closeApp() {
+  fetch('/api/quit', { method: 'POST' }).catch(function(){});
 }
 
 async function toggleQr() {
@@ -1441,7 +1460,7 @@ function resetBtn() {
   var btn = document.getElementById('downloadBtn');
   var btnText = document.getElementById('btnText');
   btn.disabled = false;
-  btnText.innerHTML = '&#11015;&#65039; 开始下载';
+  btnText.innerHTML = '&#11015;&#65039; 下载';
 }
 
 // ===== Polling =====
@@ -1526,7 +1545,7 @@ function renderDownloads() {
     var badgeClass = d.status;
 
     html += '<div class="download-item">';
-    html += '<div class="url">' + escapeHtml(d.url) + '</div>';
+    html += '<div class="download-url">' + escapeHtml(d.url) + '</div>';
     html += '<div class="progress-row">';
     html += '<span class="status-badge ' + badgeClass + '">' + statusLabel + '</span>';
     if (isDownloading2) {
@@ -1578,20 +1597,17 @@ function renderHistory() {
     var timeStr = h.finished_at ? formatTime(h.finished_at) : '';
 
     html += '<div class="history-item">';
-    html += '<div class="top-row">';
-    html += '<div class="url">' + escapeHtml(h.url) + '</div>';
-    html += '<span class="status-badge ' + badgeClass + '">' + statusLabel + '</span>';
-    html += '</div>';
+    html += '<div class="history-url">' + escapeHtml(h.url) + '</div>';
+    html += '<div class="history-meta"><span class="status-badge ' + badgeClass + '">' + statusLabel + '</span><span>' + timeStr + '</span></div>';
     if (filename && filename !== 'unknown' && filename !== 'already_downloaded') {
-      html += '<div class="file-row"><span onclick="openFile(\'' + escapeJs(h.filepath) + '\')" title="' + escapeHtml(h.filepath) + '">' + escapeHtml(filename) + '</span></div>';
+      html += '<div style="font-size:0.72rem;color:var(--text-light);margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><span style="cursor:pointer;color:var(--blue-dark);text-decoration:underline;text-underline-offset:2px;" onclick="openFile(\'' + escapeJs(h.filepath) + '\')" title="' + escapeHtml(h.filepath) + '">' + escapeHtml(filename) + '</span></div>';
     }
-    html += '<div class="download-meta" style="margin-bottom:8px"><span>' + timeStr + '</span></div>';
     html += '<div class="history-actions">';
     if (h.filepath && h.filepath !== 'unknown' && h.filepath !== 'already_downloaded') {
       html += '<button class="btn-sm open" onclick="openFile(\'' + escapeJs(h.filepath) + '\')">&#128194; 打开</button>';
     }
-    html += '<button class="btn-sm copy" onclick="copyUrl(\'' + escapeJs(h.url) + '\')">&#128203; 复制链接</button>';
-    html += '<button class="btn-sm delete" onclick="deleteRecord(\'' + h.id + '\')">&#128465;&#65039; 删除</button>';
+    html += '<button class="btn-sm copy" onclick="copyUrl(\'' + escapeJs(h.url) + '\')">&#128203; 复制</button>';
+    html += '<button class="btn-sm delete" onclick="deleteRecord(\'' + h.id + '\')">&#128465;&#65039;</button>';
     html += '</div>';
     html += '</div>';
   }
@@ -1659,12 +1675,28 @@ function copyUrl(url) {
 }
 
 // ===== Tabs =====
-function switchTab(tab) {
-  document.getElementById('tabDownloads').classList.toggle('active', tab === 'downloads');
-  document.getElementById('tabHistory').classList.toggle('active', tab === 'history');
-  document.getElementById('contentDownloads').classList.toggle('active', tab === 'downloads');
-  document.getElementById('contentHistory').classList.toggle('active', tab === 'history');
-  if (tab === 'history') loadHistory();
+function switchTab(tabName) {
+  // Show/hide download and history content
+  document.getElementById('contentDownloads').style.display = tabName === 'downloads' ? 'block' : 'none';
+  document.getElementById('contentHistory').style.display = tabName === 'history' ? 'block' : 'none';
+  // Update tab active state
+  document.querySelectorAll('.panel-tab').forEach(function(t) { t.classList.remove('active'); });
+  document.getElementById('tab_' + tabName).classList.add('active');
+  if (tabName === 'history') loadHistory();
+}
+
+// ===== FAQ =====
+function toggleFaq(el) {
+  el.classList.toggle('open');
+}
+
+// ===== Quick Access Helpers =====
+function focusInput() {
+  document.getElementById('urlInput').focus();
+}
+
+function showHistory() {
+  switchTab('history');
 }
 
 // ===== Toast =====
@@ -1764,9 +1796,9 @@ def main():
     webview.create_window(
         title="TranslookDown V4",
         url=f"http://localhost:{PORT}",
-        width=1280,
-        height=1024,
-        min_size=(1280, 1024),
+        width=960,
+        height=640,
+        min_size=(960, 640),
         frameless=True,       # No window frame/border
         easy_drag=True,       # Allow dragging the window from any point
         text_select=True,
