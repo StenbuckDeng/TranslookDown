@@ -593,6 +593,66 @@ body::after {
   letter-spacing: 1px;
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-qr {
+  background: var(--bg-card);
+  border: 2px solid #ede6d3;
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.12s;
+  box-shadow: 0 2px 6px rgba(114,93,66,0.08);
+}
+.btn-qr:hover { transform: translateY(-1px); }
+.btn-qr:active { transform: translateY(1px); }
+
+.qr-popup {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.qr-popup-content {
+  background: var(--bg-card);
+  border-radius: var(--radius-card);
+  padding: 20px;
+  text-align: center;
+  position: relative;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+}
+.qr-popup-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--text);
+}
+.qr-popup-url {
+  font-size: 0.75rem;
+  color: var(--text-light);
+  margin-top: 8px;
+  word-break: break-all;
+}
+.qr-popup-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  color: var(--text-light);
+  padding: 4px;
+}
+.qr-popup-close:hover { color: var(--red-dark); }
+
 /* ===== Input Card ===== */
 .input-card {
   background: var(--blue);
@@ -1143,9 +1203,22 @@ body::after {
       </svg>
       <h1>TranslookDown <span class="version-badge">V4</span></h1>
     </div>
-    <div class="time-widget-inline">
-      <span id="timeDay" class="time-day">MON</span>
-      <span id="timeClock" class="time-clock">00:00</span>
+    <div class="header-right">
+      <div class="time-widget-inline">
+        <span id="timeDay" class="time-day">MON</span>
+        <span id="timeClock" class="time-clock">00:00</span>
+      </div>
+      <button class="btn-qr" onclick="toggleQr()" title="手机扫码访问">&#128241;</button>
+    </div>
+  </div>
+
+  <!-- QR Code Popup -->
+  <div class="qr-popup" id="qrPopup" style="display:none">
+    <div class="qr-popup-content">
+      <div class="qr-popup-title">&#128241; 手机扫码访问</div>
+      <img id="qrCode" src="" alt="QR Code" style="width:110px;height:110px;border-radius:10px;">
+      <div class="qr-popup-url" id="mobileUrl"></div>
+      <button class="qr-popup-close" onclick="toggleQr()">&#10005;</button>
     </div>
   </div>
 
@@ -1297,6 +1370,23 @@ async function pasteAndDownload() {
 // ===== Options Panel =====
 function toggleOptions() {
   document.getElementById('optionsPanel').classList.toggle('open');
+}
+
+async function toggleQr() {
+  var popup = document.getElementById('qrPopup');
+  if (popup.style.display === 'none' || !popup.style.display) {
+    try {
+      var resp = await fetch('/api/qr');
+      var data = await resp.json();
+      document.getElementById('mobileUrl').textContent = data.url;
+      document.getElementById('qrCode').src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(data.url);
+      popup.style.display = 'flex';
+    } catch(e) {
+      showToast('获取二维码失败', 'error');
+    }
+  } else {
+    popup.style.display = 'none';
+  }
 }
 
 // ===== Download =====
@@ -1674,9 +1764,9 @@ def main():
     webview.create_window(
         title="TranslookDown V4",
         url=f"http://localhost:{PORT}",
-        width=820,
-        height=680,
-        min_size=(820, 680),
+        width=1280,
+        height=1024,
+        min_size=(1280, 1024),
         frameless=True,       # No window frame/border
         easy_drag=True,       # Allow dragging the window from any point
         text_select=True,
