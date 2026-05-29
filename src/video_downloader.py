@@ -19,6 +19,34 @@ import subprocess
 import tempfile
 from datetime import datetime
 
+# ============================================================
+# Freemium — plan gate & license
+# ============================================================
+import sys as _sys
+import os as _os
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+try:
+    from config.plan_config import (
+        get_plan_limit, is_platform_allowed, check_feature,
+        get_quality_tier, is_quality_allowed, UPGRADE_MESSAGES,
+    )
+    from license.checker import license_checker
+    _FREEMIUM_ENABLED = True
+except ImportError:
+    _FREEMIUM_ENABLED = False
+    def get_plan_limit(p, f): return None
+    def is_platform_allowed(p, u): return True
+    def check_feature(p, f): return True
+    def is_quality_allowed(p, f): return True
+    def get_quality_tier(f): return "720p"
+    UPGRADE_MESSAGES = {}
+    class _DummyChecker:
+        def get_current_plan(self): return "free"
+        def activate(self, k): return False, "模块未加载"
+        def deactivate(self): pass
+        def get_status(self): return {"plan": "free", "activated": False}
+    license_checker = _DummyChecker()
+
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
@@ -344,6 +372,82 @@ def api_download():
         "metadata": bool(data.get("metadata", False)),
     }
 
+    # ─── Freemium 功能门控 ──────────────────────────────────────
+    plan = license_checker.get_current_plan()
+
+    # 1. 平台限制：免费版只允许五大平台
+    if not is_platform_allowed(plan, url):
+        msg = UPGRADE_MESSAGES.get("platform_limit", {})
+        return jsonify({
+            "upgrade_required": True,
+            "trigger": "platform_limit",
+            "title": msg.get("title", "此平台需要 Pro"),
+            "body":  msg.get("body", "升级 Pro 解锁全部平台。"),
+            "cta":   msg.get("cta", "升级 Pro · $19/年"),
+        })
+
+    # 2. 画质限制：免费版最高 720p
+    if not is_quality_allowed(plan, options["format"]):
+        msg = UPGRADE_MESSAGES.get("quality_limit", {})
+        return jsonify({
+            "upgrade_required": True,
+            "trigger": "quality_limit",
+            "title": msg.get("title", "需要 Pro 解锁高画质"),
+            "body":  msg.get("body", "免费版最高 720p。"),
+            "cta":   msg.get("cta", "升级 Pro · $19/年"),
+        })
+
+    # 3. 并发限制：免费版最多 3 个
+    with downloads_lock:
+        active_count = sum(
+            1 for t in active_downloads.values()
+            if t.get("status") in ("starting", "downloading")
+        )
+    max_concurrent = get_plan_limit(plan, "max_concurrent") or 3
+    if active_count >= max_concurrent:
+        msg = UPGRADE_MESSAGES.get("concurrent_limit", {})
+        return jsonify({
+            "upgrade_required": True,
+            "trigger": "concurrent_limit",
+            "title": msg.get("title", "并发下载数已达上限"),
+            "body":  msg.get("body", f"免费版最多同时下载 {max_concurrent} 个。"),
+            "cta":   msg.get("cta", "升级 Pro · $19/年"),
+        })
+
+    # 4. 字幕限制
+    if options["subtitle"] and not check_feature(plan, "subtitles"):
+        msg = UPGRADE_MESSAGES.get("subtitle_limit", {})
+        return jsonify({
+            "upgrade_required": True,
+            "trigger": "subtitle_limit",
+            "title": msg.get("title", "字幕下载需要 Pro"),
+            "body":  msg.get("body", "Pro 支持 50+ 语言字幕。"),
+            "cta":   msg.get("cta", "升级 Pro · $19/年"),
+        })
+
+    # 5. 缩略图限制
+    if options["thumbnail"] and not check_feature(plan, "thumbnail"):
+        msg = UPGRADE_MESSAGES.get("thumbnail_limit", {})
+        return jsonify({
+            "upgrade_required": True,
+            "trigger": "thumbnail_limit",
+            "title": msg.get("title", "缩略图下载需要 Pro"),
+            "body":  msg.get("body", "Pro 支持下载缩略图及嵌入封面。"),
+            "cta":   msg.get("cta", "升级 Pro · $19/年"),
+        })
+
+    # 6. 元数据限制
+    if options["metadata"] and not check_feature(plan, "metadata"):
+        msg = UPGRADE_MESSAGES.get("metadata_limit", {})
+        return jsonify({
+            "upgrade_required": True,
+            "trigger": "metadata_limit",
+            "title": msg.get("title", "元数据嵌入需要 Pro"),
+            "body":  msg.get("body", "Pro 支持嵌入元数据和章节信息。"),
+            "cta":   msg.get("cta", "升级 Pro · $19/年"),
+        })
+    # ─── 所有检查通过，启动下载 ──────────────────────────────────
+
     task_id = str(uuid.uuid4())[:8]
     with downloads_lock:
         active_downloads[task_id] = {
@@ -361,6 +465,36 @@ def api_download():
     t.start()
 
     return jsonify({"task_id": task_id})
+
+
+# ─── License API Routes ────────────────────────────────────────
+
+@app.route("/api/license/status")
+def api_license_status():
+    """返回当前激活状态和套餐"""
+    return jsonify(license_checker.get_status())
+
+
+@app.route("/api/license/activate", methods=["POST"])
+def api_license_activate():
+    """激活 License Key"""
+    data = request.get_json(force=True)
+    key = data.get("key", "").strip()
+    if not key:
+        return jsonify({"success": False, "message": "License Key 不能为空"}), 400
+    success, message = license_checker.activate(key)
+    return jsonify({
+        "success": success,
+        "message": message,
+        "plan": license_checker.get_current_plan(),
+    })
+
+
+@app.route("/api/license/deactivate", methods=["POST"])
+def api_license_deactivate():
+    """退出登录，清除本地缓存"""
+    license_checker.deactivate()
+    return jsonify({"ok": True, "plan": "free"})
 
 
 @app.route("/api/progress/<task_id>")
@@ -1153,6 +1287,114 @@ body {
   animation: spin 0.7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Freemium: Plan Badge ───────────────────────────────── */
+.plan-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  user-select: none;
+}
+.plan-badge:hover { opacity: 0.85; }
+.plan-badge.free  { background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.3); }
+.plan-badge.pro   { background: linear-gradient(135deg,#f7b731,#f0932b); color: #fff; border: none; }
+.plan-badge.team  { background: linear-gradient(135deg,#6c5ce7,#a29bfe); color: #fff; border: none; }
+
+/* ── Freemium: Upgrade Modal ────────────────────────────── */
+.upgrade-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 9000;
+  align-items: center;
+  justify-content: center;
+}
+.upgrade-overlay.show { display: flex; }
+.upgrade-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 36px 32px 28px;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.25);
+  animation: upgradeIn 0.22s ease;
+}
+@keyframes upgradeIn {
+  from { transform: translateY(20px) scale(0.96); opacity: 0; }
+  to   { transform: translateY(0)    scale(1);    opacity: 1; }
+}
+.upgrade-card .uc-icon { font-size: 40px; margin-bottom: 10px; }
+.upgrade-card .uc-title { font-size: 18px; font-weight: 700; color: #2d3436; margin-bottom: 8px; }
+.upgrade-card .uc-body  { font-size: 14px; color: #636e72; line-height: 1.6; margin-bottom: 24px; white-space: pre-line; }
+.upgrade-card .uc-btns  { display: flex; gap: 10px; }
+.upgrade-card .uc-btn-primary {
+  flex: 1; padding: 12px; border: none; border-radius: 10px;
+  background: linear-gradient(135deg,#5a9e6f,#3d7a52);
+  color: #fff; font-size: 14px; font-weight: 700;
+  cursor: pointer; transition: opacity 0.2s;
+}
+.upgrade-card .uc-btn-primary:hover { opacity: 0.9; }
+.upgrade-card .uc-btn-later {
+  flex: 1; padding: 12px; border: 1px solid #dfe6e9; border-radius: 10px;
+  background: transparent; color: #636e72; font-size: 14px;
+  cursor: pointer; transition: background 0.2s;
+}
+.upgrade-card .uc-btn-later:hover { background: #f5f6fa; }
+
+/* ── Freemium: License Panel ────────────────────────────── */
+.license-section {
+  margin-top: 12px;
+  padding: 12px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+}
+.license-section .lic-title {
+  font-size: 11px; font-weight: 700;
+  color: rgba(255,255,255,0.55);
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.license-section .lic-input {
+  width: 100%; box-sizing: border-box;
+  padding: 8px 10px; border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.1);
+  color: #fff; font-size: 12px;
+  outline: none; margin-bottom: 7px;
+}
+.license-section .lic-input::placeholder { color: rgba(255,255,255,0.35); }
+.license-section .lic-input:focus { border-color: rgba(255,255,255,0.5); }
+.license-section .lic-btn {
+  width: 100%; padding: 8px;
+  border: none; border-radius: 8px;
+  background: linear-gradient(135deg,#5a9e6f,#3d7a52);
+  color: #fff; font-size: 12px; font-weight: 700;
+  cursor: pointer; transition: opacity 0.2s;
+}
+.license-section .lic-btn:hover { opacity: 0.9; }
+.license-section .lic-status {
+  font-size: 11px; color: rgba(255,255,255,0.6);
+  margin-top: 6px; text-align: center;
+}
+.license-section .lic-deactivate {
+  width: 100%; margin-top: 6px; padding: 6px;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 8px; background: transparent;
+  color: rgba(255,255,255,0.5); font-size: 11px;
+  cursor: pointer; transition: background 0.2s;
+}
+.license-section .lic-deactivate:hover { background: rgba(255,255,255,0.08); }
+
 </style>
 </head>
 <body>
@@ -1160,7 +1402,8 @@ body {
 <div class="container">
   <!-- Header -->
   <div class="header-row">
-    <div class="logo-wrap">
+    <div style="display:flex;align-items:center;gap:10px;width:100%;">
+    <div class="logo-wrap" style="flex:1;">
       <svg viewBox="0 0 60 60" width="28" height="28">
         <ellipse cx="30" cy="35" rx="22" ry="20" fill="#8B6F47"/>
         <ellipse cx="30" cy="32" rx="18" ry="16" fill="#A0845C"/>
@@ -1184,6 +1427,13 @@ body {
         <span id="timeClock" class="time-clock">00:00</span>
       </div>
       <button class="btn-close" onclick="closeApp()" title="关闭">&#10005;</button>
+    </div>
+  </div>
+
+        <div class="plan-badge free" id="planBadge" onclick="toggleLicensePanel()" title="点击管理 License">
+        <span id="planBadgeIcon">🔓</span>
+        <span id="planBadgeText">FREE</span>
+      </div>
     </div>
   </div>
 
@@ -1297,6 +1547,25 @@ body {
           </label>
         </div>
       </div>
+
+      <!-- License Activation -->
+      <div class="license-section" id="licensePanel" style="display:none;">
+        <div class="lic-title">🔑 激活 Pro License</div>
+        <div id="licActivateView">
+          <input class="lic-input" id="licKeyInput"
+                 placeholder="TLD-XXXXX-XXXXX-XXXXX"
+                 autocomplete="off" spellcheck="false">
+          <button class="lic-btn" onclick="activateLicense()">激活</button>
+        </div>
+        <div id="licActiveView" style="display:none;">
+          <div style="text-align:center;padding:4px 0;">
+            <span style="font-size:22px;">✅</span>
+            <div style="font-size:12px;color:rgba(255,255,255,0.8);margin-top:4px;" id="licActiveLabel">Pro 已激活</div>
+          </div>
+          <button class="lic-deactivate" onclick="deactivateLicense()">退出登录</button>
+        </div>
+        <div class="lic-status" id="licStatusMsg"></div>
+      </div>
     </div>
   </div>
 
@@ -1329,6 +1598,20 @@ body {
     <img id="qrCode" src="" alt="QR Code" style="width:110px;height:110px;border-radius:10px;">
     <div class="qr-popup-url" id="mobileUrl"></div>
     <button class="qr-popup-close" onclick="toggleQr()">&#10005;</button>
+  </div>
+</div>
+
+
+<!-- Upgrade Modal -->
+<div class="upgrade-overlay" id="upgradeOverlay" onclick="closeUpgradeModal(event)">
+  <div class="upgrade-card">
+    <div class="uc-icon">🌟</div>
+    <div class="uc-title" id="ucTitle">需要 Pro</div>
+    <div class="uc-body"  id="ucBody">升级解锁更多功能。</div>
+    <div class="uc-btns">
+      <button class="uc-btn-primary" id="ucCta" onclick="openUpgradeUrl()">升级 Pro · $19/年</button>
+      <button class="uc-btn-later"   onclick="closeUpgradeModal()">以后再说</button>
+    </div>
   </div>
 </div>
 
@@ -1440,6 +1723,10 @@ async function startDownload() {
       body: JSON.stringify({url: url, format: options.format, subtitle: options.subtitle, thumbnail: options.thumbnail, metadata: options.metadata})
     });
     var data = await resp.json();
+    if (handleDownloadResponse(data)) {
+      resetBtn();
+      return;
+    }
     if (data.error) {
       showToast(data.error, 'error');
       resetBtn();
@@ -1739,6 +2026,116 @@ function formatTime(isoStr) {
     return isoStr;
   }
 }
+
+// ===== Freemium: Upgrade Modal =====
+var UPGRADE_URL = 'https://translookdown.com/#pricing';
+
+function showUpgradeModal(title, body, cta) {
+  document.getElementById('ucTitle').textContent = title || '需要 Pro';
+  document.getElementById('ucBody').textContent  = body  || '升级解锁更多功能。';
+  document.getElementById('ucCta').textContent   = cta   || '升级 Pro · $19/年';
+  document.getElementById('upgradeOverlay').classList.add('show');
+}
+function closeUpgradeModal(e) {
+  if (!e || e.target === document.getElementById('upgradeOverlay')) {
+    document.getElementById('upgradeOverlay').classList.remove('show');
+  }
+}
+function openUpgradeUrl() {
+  window.open(UPGRADE_URL, '_blank');
+  closeUpgradeModal();
+}
+
+// ===== Freemium: License Panel =====
+function toggleLicensePanel() {
+  var panel = document.getElementById('licensePanel');
+  if (panel.style.display === 'none') {
+    panel.style.display = 'block';
+  } else {
+    panel.style.display = 'none';
+  }
+}
+
+function activateLicense() {
+  var key = document.getElementById('licKeyInput').value.trim();
+  if (!key) { setLicStatus('请输入 License Key'); return; }
+  setLicStatus('验证中...');
+  fetch('/api/license/activate', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({key: key})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      setLicStatus(data.message);
+      updatePlanBadge(data.plan);
+      showLicActiveView(data.plan);
+    } else {
+      setLicStatus('❌ ' + data.message);
+    }
+  })
+  .catch(() => setLicStatus('❌ 网络错误，请重试'));
+}
+
+function deactivateLicense() {
+  fetch('/api/license/deactivate', {method:'POST'})
+  .then(() => {
+    updatePlanBadge('free');
+    showLicActivateView();
+    setLicStatus('已退出登录');
+  });
+}
+
+function setLicStatus(msg) {
+  document.getElementById('licStatusMsg').textContent = msg;
+}
+
+function showLicActiveView(plan) {
+  document.getElementById('licActivateView').style.display = 'none';
+  document.getElementById('licActiveView').style.display   = 'block';
+  document.getElementById('licActiveLabel').textContent =
+    (plan === 'team' ? 'Team' : 'Pro') + ' 已激活 ✓';
+}
+
+function showLicActivateView() {
+  document.getElementById('licActivateView').style.display = 'block';
+  document.getElementById('licActiveView').style.display   = 'none';
+  document.getElementById('licKeyInput').value = '';
+}
+
+function updatePlanBadge(plan) {
+  var badge = document.getElementById('planBadge');
+  var icon  = document.getElementById('planBadgeIcon');
+  var text  = document.getElementById('planBadgeText');
+  badge.className = 'plan-badge ' + (plan || 'free');
+  if (plan === 'pro')  { icon.textContent = '⭐'; text.textContent = 'PRO'; }
+  else if (plan === 'team') { icon.textContent = '👑'; text.textContent = 'TEAM'; }
+  else                 { icon.textContent = '🔓'; text.textContent = 'FREE'; }
+}
+
+// ===== Freemium: Handle upgrade_required from API =====
+function handleDownloadResponse(data) {
+  if (data.upgrade_required) {
+    showUpgradeModal(data.title, data.body, data.cta);
+    return true;   // blocked
+  }
+  return false;    // proceed normally
+}
+
+// ===== Init: load plan status on page load =====
+(function initPlan() {
+  fetch('/api/license/status')
+  .then(r => r.json())
+  .then(data => {
+    updatePlanBadge(data.plan);
+    if (data.activated) {
+      showLicActiveView(data.plan);
+    }
+  })
+  .catch(() => {});
+})();
+
 </script>
 </body>
 </html>"""
