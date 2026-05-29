@@ -1,0 +1,17 @@
+name = "translookdown-license"
+main = "license_worker.js"
+compatibility_date = "2024-01-01"
+
+# 部署后绑定到自定义域名：
+# [[routes]]
+# pattern = "license.translookdown.com/*"
+# zone_name = "translookdown.com"
+
+# KV namespace：先用 wrangler kv:namespace create LICENSE_KV 创建，
+# 把生成的 id 填到下面的 id 字段
+[[kv_namespaces]]
+binding = "LICENSE_KV"
+id      = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+
+# Preview KV（本地 dev 用）
+# preview_id = "REPLACE_WITH_YOUR_PREVIEW_KV_ID"

@@ -1,0 +1,115 @@
+name: Build TranslookDown
+
+on:
+  push:
+    tags:
+      - 'v*'      # 打 tag 时触发，例如 v4.1.0
+  workflow_dispatch:  # 也支持手动触发
+
+jobs:
+  # ── macOS 打包 ──────────────────────────────────────────────
+  build-mac:
+    name: Build macOS .app
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt pyinstaller
+          # 如果没有 requirements.txt，手动安装核心依赖
+          pip install flask flask-cors pywebview pillow requests cryptography \
+                      yt-dlp qrcode 2>/dev/null || true
+
+      - name: Build macOS app
+        run: |
+          pyinstaller \
+            --name "TranslookDown" \
+            --windowed \
+            --onedir \
+            --add-data "config:config" \
+            --add-data "license:license" \
+            --add-binary "bundle/yt-dlp:bundle" \
+            --add-binary "bundle/ffmpeg:bundle" \
+            --add-binary "bundle/ffprobe:bundle" \
+            src/video_downloader.py
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TranslookDown-macOS-${{ github.ref_name }}
+          path: dist/TranslookDown.app
+          retention-days: 30
+
+  # ── Windows 打包 ─────────────────────────────────────────────
+  build-windows:
+    name: Build Windows .exe
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install flask flask-cors pywebview pillow requests cryptography `
+                      yt-dlp qrcode pyinstaller
+
+      - name: Build Windows exe
+        run: |
+          pyinstaller `
+            --name "TranslookDown" `
+            --windowed `
+            --onedir `
+            --add-data "config;config" `
+            --add-data "license;license" `
+            --add-binary "bundle/yt-dlp.exe;bundle" `
+            --add-binary "bundle/ffmpeg.exe;bundle" `
+            --add-binary "bundle/ffprobe.exe;bundle" `
+            src/video_downloader.py
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TranslookDown-Windows-${{ github.ref_name }}
+          path: dist/TranslookDown/
+          retention-days: 30
+
+  # ── Release: 附加产物到 GitHub Release ──────────────────────
+  release:
+    name: Create GitHub Release
+    needs: [build-mac, build-windows]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: TranslookDown-macOS-${{ github.ref_name }}
+          path: release/mac/
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: TranslookDown-Windows-${{ github.ref_name }}
+          path: release/windows/
+
+      - name: Zip artifacts
+        run: |
+          cd release
+          zip -r TranslookDown-macOS-${{ github.ref_name }}.zip mac/
+          zip -r TranslookDown-Windows-${{ github.ref_name }}.zip windows/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/TranslookDown-macOS-${{ github.ref_name }}.zip
+            release/TranslookDown-Windows-${{ github.ref_name }}.zip
+          generate_release_notes: true
