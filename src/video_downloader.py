@@ -48,6 +48,15 @@ except ImportError:
     license_checker = _DummyChecker()
 
 from flask import Flask, jsonify, request
+
+# ============================================================
+# Cross-platform binary helpers
+# ============================================================
+def _bin(name: str) -> str:
+    """Return platform-appropriate binary filename."""
+    import platform
+    return name + ".exe" if platform.system() == "Windows" else name
+
 from flask_cors import CORS
 
 # ============================================================
@@ -72,7 +81,7 @@ def setup_environment():
     os.makedirs(_BUNDLE_DIR, exist_ok=True)
 
     # List of binaries to extract from the bundled data
-    binaries = ["yt-dlp.exe", "ffmpeg.exe", "ffprobe.exe"]
+    binaries = [_bin("yt-dlp"), _bin("ffmpeg"), _bin("ffprobe")]
 
     for binary_name in binaries:
         dest = os.path.join(_BUNDLE_DIR, binary_name)
@@ -102,10 +111,10 @@ def get_app_dir():
     return os.path.dirname(os.path.abspath(__file__))
 
 def get_ytdlp_path():
-    return os.path.join(get_bundle_dir(), "yt-dlp.exe")
+    return os.path.join(get_bundle_dir(), _bin("yt-dlp"))
 
 def get_ffmpeg_path():
-    return os.path.join(get_bundle_dir(), "ffmpeg.exe")
+    return os.path.join(get_bundle_dir(), _bin("ffmpeg"))
 
 def get_download_dir():
     d = os.path.join(get_app_dir(), "downloads")

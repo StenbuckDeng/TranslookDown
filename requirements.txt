@@ -1,0 +1,8 @@
+flask
+flask-cors
+pywebview
+pillow
+requests
+cryptography
+yt-dlp
+qrcode[pil]
