@@ -14,7 +14,7 @@ from .cache import save_cache, load_cache, clear_cache
 from .fingerprint import get_fingerprint
 
 # 替换为你部署的 Cloudflare Worker URL
-LICENSE_API = "https://license.translookdown.com/verify"
+LICENSE_API = "https://odd-base-e5e3.ts-qrcode.workers.dev"
 OFFLINE_GRACE = 7 * 24 * 3600   # 离线宽限 7 天
 
 
