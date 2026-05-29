@@ -17,6 +17,17 @@ TranslookDown License Generator
 """
 
 import argparse
+
+# 自动加载同目录下的 .env 文件
+import pathlib
+_env_file = pathlib.Path(__file__).parent / ".env"
+if _env_file.exists():
+    for _line in _env_file.read_text().splitlines():
+        _line = _line.strip()
+        if _line and not _line.startswith("#") and "=" in _line:
+            _k, _v = _line.split("=", 1)
+            import os as _os2; _os2.environ.setdefault(_k.strip(), _v.strip())
+
 import json
 import os
 import random
