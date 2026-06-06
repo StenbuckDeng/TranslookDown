@@ -1,8 +1,8 @@
 name = "odd-base-e5e3"
 main = "license_worker.js"
 compatibility_date = "2024-01-01"
+account_id = "0d4293cde18c312726d39db486071195"
 
 [[kv_namespaces]]
 binding = "LICENSE_KV"
 id      = "42f09113c9a64457b4422a3c489e2225"
-# deployed 2026-06-06T06:29:49Z
