@@ -220,7 +220,7 @@ const ADMIN_HTML = `<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><
 var pwd=new URLSearchParams(location.search).get('pwd')||sessionStorage.getItem('admpwd');
 if(pwd)sessionStorage.setItem('admpwd',pwd);
 var lastKey='';
-function api(path,opts){return fetch(path+(path.includes('?')?'&':'?')+'pwd='+encodeURIComponent(pwd),opts||{}).then(r=>r.json());}
+function api(path,opts){return fetch(path+(path.includes('?')?'&':'?')+'pwd='+encodeURIComponent(pwd),opts||{}).then(r=>{var ct=r.headers.get('content-type')||'';if(ct.includes('text/html')){sessionStorage.removeItem('admpwd');setTimeout(()=>location.href='/admin',1500);throw new Error('密码已变更，即将跳转登录页…');}return r.json();});}
 function generate(){
   var b=document.getElementById('genBtn');
   b.disabled=true;b.textContent='生成中...';
@@ -231,7 +231,7 @@ function generate(){
       document.getElementById('keyMeta').textContent=d.plan.toUpperCase()+' · 到期：'+d.expires_str+(d.email?' · '+d.email:'');
       document.getElementById('result').style.display='block';loadList();toast('✅ License 已生成');}
     else toast('❌ '+(d.error||'失败'));})
-  .catch(()=>{b.disabled=false;b.textContent='生成 License';toast('❌ 请求失败');});}
+  .catch(e=>{b.disabled=false;b.textContent='生成 License';toast('❌ '+(e.message||'请求失败'));});}
 function copyKey(){navigator.clipboard.writeText(lastKey).then(()=>toast('✅ 已复制：'+lastKey));}
 function loadList(){
   document.getElementById('list').innerHTML='<div class="empty">加载中...</div>';
