@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-TranslookDown V4 - Animal Island Theme (Standalone Edition)
+TranslookDown V5 - Animal Island Theme (Standalone Edition)
 A fully standalone video downloader with embedded browser and all dependencies.
 Usage: python video_downloader.py
 Package: pyinstaller --onefile --name TranslookDown video_downloader.py
@@ -20,7 +20,7 @@ import tempfile
 from datetime import datetime
 
 # ============================================================
-# Freemium — plan gate & license
+# Freemium â plan gate & license
 # ============================================================
 import sys as _sys
 import os as _os
@@ -42,7 +42,7 @@ except ImportError:
     UPGRADE_MESSAGES = {}
     class _DummyChecker:
         def get_current_plan(self): return "free"
-        def activate(self, k): return False, "模块未加载"
+        def activate(self, k): return False, "æ¨¡åæªå è½½"
         def deactivate(self): pass
         def get_status(self): return {"plan": "free", "activated": False}
     license_checker = _DummyChecker()
@@ -125,6 +125,10 @@ HISTORY_FILE = "download_history.json"
 MAX_HISTORY = 200
 HOST = "127.0.0.1"
 PORT = 5000
+APP_VERSION = "5.0.0"
+GITHUB_REPO = "StenbuckDeng/TranslookDown"
+_update_info = {}
+
 
 # ============================================================
 # Global State
@@ -381,32 +385,32 @@ def api_download():
         "metadata": bool(data.get("metadata", False)),
     }
 
-    # ─── Freemium 功能门控 ──────────────────────────────────────
+    # âââ Freemium åè½é¨æ§ ââââââââââââââââââââââââââââââââââââââ
     plan = license_checker.get_current_plan()
 
-    # 1. 平台限制：免费版只允许五大平台
+    # 1. å¹³å°éå¶ï¼åè´¹çåªåè®¸äºå¤§å¹³å°
     if not is_platform_allowed(plan, url):
         msg = UPGRADE_MESSAGES.get("platform_limit", {})
         return jsonify({
             "upgrade_required": True,
             "trigger": "platform_limit",
-            "title": msg.get("title", "此平台需要 Pro"),
-            "body":  msg.get("body", "升级 Pro 解锁全部平台。"),
-            "cta":   msg.get("cta", "升级 Pro · $19/年"),
+            "title": msg.get("title", "æ­¤å¹³å°éè¦ Pro"),
+            "body":  msg.get("body", "åçº§ Pro è§£éå¨é¨å¹³å°ã"),
+            "cta":   msg.get("cta", "åçº§ Pro Â· $19/å¹´"),
         })
 
-    # 2. 画质限制：免费版最高 720p
+    # 2. ç»è´¨éå¶ï¼åè´¹çæé« 720p
     if not is_quality_allowed(plan, options["format"]):
         msg = UPGRADE_MESSAGES.get("quality_limit", {})
         return jsonify({
             "upgrade_required": True,
             "trigger": "quality_limit",
-            "title": msg.get("title", "需要 Pro 解锁高画质"),
-            "body":  msg.get("body", "免费版最高 720p。"),
-            "cta":   msg.get("cta", "升级 Pro · $19/年"),
+            "title": msg.get("title", "éè¦ Pro è§£éé«ç»è´¨"),
+            "body":  msg.get("body", "åè´¹çæé« 720pã"),
+            "cta":   msg.get("cta", "åçº§ Pro Â· $19/å¹´"),
         })
 
-    # 3. 并发限制：免费版最多 3 个
+    # 3. å¹¶åéå¶ï¼åè´¹çæå¤ 3 ä¸ª
     with downloads_lock:
         active_count = sum(
             1 for t in active_downloads.values()
@@ -418,44 +422,44 @@ def api_download():
         return jsonify({
             "upgrade_required": True,
             "trigger": "concurrent_limit",
-            "title": msg.get("title", "并发下载数已达上限"),
-            "body":  msg.get("body", f"免费版最多同时下载 {max_concurrent} 个。"),
-            "cta":   msg.get("cta", "升级 Pro · $19/年"),
+            "title": msg.get("title", "å¹¶åä¸è½½æ°å·²è¾¾ä¸é"),
+            "body":  msg.get("body", f"åè´¹çæå¤åæ¶ä¸è½½ {max_concurrent} ä¸ªã"),
+            "cta":   msg.get("cta", "åçº§ Pro Â· $19/å¹´"),
         })
 
-    # 4. 字幕限制
+    # 4. å­å¹éå¶
     if options["subtitle"] and not check_feature(plan, "subtitles"):
         msg = UPGRADE_MESSAGES.get("subtitle_limit", {})
         return jsonify({
             "upgrade_required": True,
             "trigger": "subtitle_limit",
-            "title": msg.get("title", "字幕下载需要 Pro"),
-            "body":  msg.get("body", "Pro 支持 50+ 语言字幕。"),
-            "cta":   msg.get("cta", "升级 Pro · $19/年"),
+            "title": msg.get("title", "å­å¹ä¸è½½éè¦ Pro"),
+            "body":  msg.get("body", "Pro æ¯æ 50+ è¯­è¨å­å¹ã"),
+            "cta":   msg.get("cta", "åçº§ Pro Â· $19/å¹´"),
         })
 
-    # 5. 缩略图限制
+    # 5. ç¼©ç¥å¾éå¶
     if options["thumbnail"] and not check_feature(plan, "thumbnail"):
         msg = UPGRADE_MESSAGES.get("thumbnail_limit", {})
         return jsonify({
             "upgrade_required": True,
             "trigger": "thumbnail_limit",
-            "title": msg.get("title", "缩略图下载需要 Pro"),
-            "body":  msg.get("body", "Pro 支持下载缩略图及嵌入封面。"),
-            "cta":   msg.get("cta", "升级 Pro · $19/年"),
+            "title": msg.get("title", "ç¼©ç¥å¾ä¸è½½éè¦ Pro"),
+            "body":  msg.get("body", "Pro æ¯æä¸è½½ç¼©ç¥å¾ååµå¥å°é¢ã"),
+            "cta":   msg.get("cta", "åçº§ Pro Â· $19/å¹´"),
         })
 
-    # 6. 元数据限制
+    # 6. åæ°æ®éå¶
     if options["metadata"] and not check_feature(plan, "metadata"):
         msg = UPGRADE_MESSAGES.get("metadata_limit", {})
         return jsonify({
             "upgrade_required": True,
             "trigger": "metadata_limit",
-            "title": msg.get("title", "元数据嵌入需要 Pro"),
-            "body":  msg.get("body", "Pro 支持嵌入元数据和章节信息。"),
-            "cta":   msg.get("cta", "升级 Pro · $19/年"),
+            "title": msg.get("title", "åæ°æ®åµå¥éè¦ Pro"),
+            "body":  msg.get("body", "Pro æ¯æåµå¥åæ°æ®åç« èä¿¡æ¯ã"),
+            "cta":   msg.get("cta", "åçº§ Pro Â· $19/å¹´"),
         })
-    # ─── 所有检查通过，启动下载 ──────────────────────────────────
+    # âââ æææ£æ¥éè¿ï¼å¯å¨ä¸è½½ ââââââââââââââââââââââââââââââââââ
 
     task_id = str(uuid.uuid4())[:8]
     with downloads_lock:
@@ -476,21 +480,21 @@ def api_download():
     return jsonify({"task_id": task_id})
 
 
-# ─── License API Routes ────────────────────────────────────────
+# âââ License API Routes ââââââââââââââââââââââââââââââââââââââââ
 
 @app.route("/api/license/status")
 def api_license_status():
-    """返回当前激活状态和套餐"""
+    """è¿åå½åæ¿æ´»ç¶æåå¥é¤"""
     return jsonify(license_checker.get_status())
 
 
 @app.route("/api/license/activate", methods=["POST"])
 def api_license_activate():
-    """激活 License Key"""
+    """æ¿æ´» License Key"""
     data = request.get_json(force=True)
     key = data.get("key", "").strip()
     if not key:
-        return jsonify({"success": False, "message": "License Key 不能为空"}), 400
+        return jsonify({"success": False, "message": "License Key ä¸è½ä¸ºç©º"}), 400
     success, message = license_checker.activate(key)
     return jsonify({
         "success": success,
@@ -501,7 +505,7 @@ def api_license_activate():
 
 @app.route("/api/license/deactivate", methods=["POST"])
 def api_license_deactivate():
-    """退出登录，清除本地缓存"""
+    """éåºç»å½ï¼æ¸é¤æ¬å°ç¼å­"""
     license_checker.deactivate()
     return jsonify({"ok": True, "plan": "free"})
 
@@ -605,7 +609,7 @@ def api_qr():
 
 
 # ============================================================
-# Embedded HTML/CSS/JS Frontend (Animal Island Theme - V4)
+# Embedded HTML/CSS/JS Frontend (Animal Island Theme - V5)
 # ============================================================
 
 HTML_PAGE = r"""<!DOCTYPE html>
@@ -613,7 +617,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TranslookDown V4</title>
+<title>TranslookDown V5</title>
 <style>
 /* ===== Reset & Base ===== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1297,7 +1301,7 @@ body {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ── Freemium: Plan Badge ───────────────────────────────── */
+/* ââ Freemium: Plan Badge âââââââââââââââââââââââââââââââââ */
 .plan-badge {
   display: inline-flex;
   align-items: center;
@@ -1316,7 +1320,7 @@ body {
 .plan-badge.pro   { background: linear-gradient(135deg,#f7b731,#f0932b); color: #fff; border: none; }
 .plan-badge.team  { background: linear-gradient(135deg,#6c5ce7,#a29bfe); color: #fff; border: none; }
 
-/* ── Freemium: Upgrade Modal ────────────────────────────── */
+/* ââ Freemium: Upgrade Modal ââââââââââââââââââââââââââââââ */
 .upgrade-overlay {
   display: none;
   position: fixed; inset: 0;
@@ -1358,7 +1362,7 @@ body {
 }
 .upgrade-card .uc-btn-later:hover { background: #f5f6fa; }
 
-/* ── Freemium: License Panel ────────────────────────────── */
+/* ââ Freemium: License Panel ââââââââââââââââââââââââââââââ */
 .license-section {
   margin-top: 12px;
   padding: 12px;
@@ -1428,19 +1432,19 @@ body {
         <circle cx="48" cy="50" r="1.5" fill="#C4A265"/>
         <circle cx="30" cy="54" r="2.5" fill="#C4A265"/>
       </svg>
-      <h1>&#128560; TranslookDown <span class="version-badge">V4</span></h1>
+      <h1>&#128560; TranslookDown <span class="version-badge">V5</span></h1>
     </div>
     <div class="header-right">
       <div class="time-widget-inline">
         <span id="timeDay" class="time-day">MON</span>
         <span id="timeClock" class="time-clock">00:00</span>
       </div>
-      <button class="btn-close" onclick="closeApp()" title="关闭">&#10005;</button>
+      <button class="btn-close" onclick="closeApp()" title="å³é­">&#10005;</button>
     </div>
   </div>
 
-        <div class="plan-badge free" id="planBadge" onclick="toggleLicensePanel()" title="点击管理 License">
-        <span id="planBadgeIcon">🔓</span>
+        <div class="plan-badge free" id="planBadge" onclick="toggleLicensePanel()" title="ç¹å»ç®¡ç License">
+        <span id="planBadgeIcon">ð</span>
         <span id="planBadgeText">FREE</span>
       </div>
     </div>
@@ -1559,19 +1563,19 @@ body {
 
       <!-- License Activation -->
       <div class="license-section" id="licensePanel" style="display:none;">
-        <div class="lic-title">🔑 激活 Pro License</div>
+        <div class="lic-title">ð æ¿æ´» Pro License</div>
         <div id="licActivateView">
           <input class="lic-input" id="licKeyInput"
                  placeholder="TLD-XXXXX-XXXXX-XXXXX"
                  autocomplete="off" spellcheck="false">
-          <button class="lic-btn" onclick="activateLicense()">激活</button>
+          <button class="lic-btn" onclick="activateLicense()">æ¿æ´»</button>
         </div>
         <div id="licActiveView" style="display:none;">
           <div style="text-align:center;padding:4px 0;">
-            <span style="font-size:22px;">✅</span>
-            <div style="font-size:12px;color:rgba(255,255,255,0.8);margin-top:4px;" id="licActiveLabel">Pro 已激活</div>
+            <span style="font-size:22px;">â</span>
+            <div style="font-size:12px;color:rgba(255,255,255,0.8);margin-top:4px;" id="licActiveLabel">Pro å·²æ¿æ´»</div>
           </div>
-          <button class="lic-deactivate" onclick="deactivateLicense()">退出登录</button>
+          <button class="lic-deactivate" onclick="deactivateLicense()">éåºç»å½</button>
         </div>
         <div class="lic-status" id="licStatusMsg"></div>
       </div>
@@ -1614,12 +1618,12 @@ body {
 <!-- Upgrade Modal -->
 <div class="upgrade-overlay" id="upgradeOverlay" onclick="closeUpgradeModal(event)">
   <div class="upgrade-card">
-    <div class="uc-icon">🌟</div>
-    <div class="uc-title" id="ucTitle">需要 Pro</div>
-    <div class="uc-body"  id="ucBody">升级解锁更多功能。</div>
+    <div class="uc-icon">ð</div>
+    <div class="uc-title" id="ucTitle">éè¦ Pro</div>
+    <div class="uc-body"  id="ucBody">åçº§è§£éæ´å¤åè½ã</div>
     <div class="uc-btns">
-      <button class="uc-btn-primary" id="ucCta" onclick="openUpgradeUrl()">升级 Pro · $19/年</button>
-      <button class="uc-btn-later"   onclick="closeUpgradeModal()">以后再说</button>
+      <button class="uc-btn-primary" id="ucCta" onclick="openUpgradeUrl()">åçº§ Pro Â· $19/å¹´</button>
+      <button class="uc-btn-later"   onclick="closeUpgradeModal()">ä»¥ååè¯´</button>
     </div>
   </div>
 </div>
@@ -1663,14 +1667,14 @@ async function pasteAndDownload() {
     var text = await navigator.clipboard.readText();
     if (text && text.trim().startsWith('http')) {
       document.getElementById('urlInput').value = text.trim();
-      showToast('已粘贴并开始下载！', 'success');
+      showToast('å·²ç²è´´å¹¶å¼å§ä¸è½½ï¼', 'success');
       startDownload();
     } else {
       document.getElementById('urlInput').value = text;
-      showToast('已粘贴，但内容不是有效链接', 'error');
+      showToast('å·²ç²è´´ï¼ä½åå®¹ä¸æ¯ææé¾æ¥', 'error');
     }
   } catch(e) {
-    showToast('无法读取剪贴板，请手动粘贴', 'error');
+    showToast('æ æ³è¯»ååªè´´æ¿ï¼è¯·æå¨ç²è´´', 'error');
   }
 }
 
@@ -1693,7 +1697,7 @@ async function toggleQr() {
       document.getElementById('qrCode').src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(data.url);
       popup.style.display = 'flex';
     } catch(e) {
-      showToast('获取二维码失败', 'error');
+      showToast('è·åäºç»´ç å¤±è´¥', 'error');
     }
   } else {
     popup.style.display = 'none';
@@ -1705,7 +1709,7 @@ async function startDownload() {
   var input = document.getElementById('urlInput');
   var url = input.value.trim();
   if (!url) {
-    showToast('请输入视频链接', 'error');
+    showToast('è¯·è¾å¥è§é¢é¾æ¥', 'error');
     input.focus();
     return;
   }
@@ -1714,7 +1718,7 @@ async function startDownload() {
   var btn = document.getElementById('downloadBtn');
   var btnText = document.getElementById('btnText');
   btn.disabled = true;
-  btnText.innerHTML = '<span class="spinner"></span> 请求中...';
+  btnText.innerHTML = '<span class="spinner"></span> è¯·æ±ä¸­...';
   isDownloading = true;
 
   // Gather options
@@ -1741,12 +1745,12 @@ async function startDownload() {
       resetBtn();
       return;
     }
-    showToast('下载已开始!', 'success');
+    showToast('ä¸è½½å·²å¼å§!', 'success');
     input.value = '';
     switchTab('downloads');
     startProgressPoll(data.task_id);
   } catch (e) {
-    showToast('请求失败: ' + e.message, 'error');
+    showToast('è¯·æ±å¤±è´¥: ' + e.message, 'error');
   }
   resetBtn();
 }
@@ -1756,7 +1760,7 @@ function resetBtn() {
   var btn = document.getElementById('downloadBtn');
   var btnText = document.getElementById('btnText');
   btn.disabled = false;
-  btnText.innerHTML = '&#11015;&#65039; 下载';
+  btnText.innerHTML = '&#11015;&#65039; ä¸è½½';
 }
 
 // ===== Polling =====
@@ -1807,10 +1811,10 @@ function startProgressPoll(taskId) {
         clearInterval(progressTimers[taskId]);
         delete progressTimers[taskId];
         if (data.status === 'completed') {
-          showToast('下载完成!', 'success');
+          showToast('ä¸è½½å®æ!', 'success');
           loadHistory();
         } else {
-          showToast('下载失败: ' + (data.error || '未知错误'), 'error');
+          showToast('ä¸è½½å¤±è´¥: ' + (data.error || 'æªç¥éè¯¯'), 'error');
         }
       }
     } catch (e) {
@@ -1824,7 +1828,7 @@ function renderDownloads() {
   var list = document.getElementById('downloadList');
   var keys = Object.keys(activeDownloads);
   if (keys.length === 0) {
-    list.innerHTML = '<div class="empty-state"><div class="emoji">&#127744;</div><div>暂无下载任务，粘贴链接开始下载吧~</div></div>';
+    list.innerHTML = '<div class="empty-state"><div class="emoji">&#127744;</div><div>ææ ä¸è½½ä»»å¡ï¼ç²è´´é¾æ¥å¼å§ä¸è½½å§~</div></div>';
     return;
   }
   var html = '';
@@ -1837,7 +1841,7 @@ function renderDownloads() {
     var totalSize = d.progress ? d.progress.total_size : '';
     var isError = d.status === 'error';
     var isDownloading2 = d.status === 'downloading';
-    var statusLabel = d.status === 'starting' ? '准备中' : d.status === 'downloading' ? '下载中' : d.status === 'completed' ? '已完成' : '失败';
+    var statusLabel = d.status === 'starting' ? 'åå¤ä¸­' : d.status === 'downloading' ? 'ä¸è½½ä¸­' : d.status === 'completed' ? 'å·²å®æ' : 'å¤±è´¥';
     var badgeClass = d.status;
 
     html += '<div class="download-item">';
@@ -1879,7 +1883,7 @@ function renderHistory() {
   var list = document.getElementById('historyList');
   var clearBtn = document.getElementById('clearAllBtn');
   if (historyData.length === 0) {
-    list.innerHTML = '<div class="empty-state"><div class="emoji">&#128214;</div><div>还没有下载记录哦~</div></div>';
+    list.innerHTML = '<div class="empty-state"><div class="emoji">&#128214;</div><div>è¿æ²¡æä¸è½½è®°å½å¦~</div></div>';
     clearBtn.style.display = 'none';
     return;
   }
@@ -1887,7 +1891,7 @@ function renderHistory() {
   var html = '';
   for (var i = 0; i < historyData.length; i++) {
     var h = historyData[i];
-    var statusLabel = h.status === 'completed' ? '已完成' : '失败';
+    var statusLabel = h.status === 'completed' ? 'å·²å®æ' : 'å¤±è´¥';
     var badgeClass = h.status;
     var filename = h.filepath ? h.filepath.split(/[\/\\]/).pop() : '';
     var timeStr = h.finished_at ? formatTime(h.finished_at) : '';
@@ -1900,9 +1904,9 @@ function renderHistory() {
     }
     html += '<div class="history-actions">';
     if (h.filepath && h.filepath !== 'unknown' && h.filepath !== 'already_downloaded') {
-      html += '<button class="btn-sm open" onclick="openFile(\'' + escapeJs(h.filepath) + '\')">&#128194; 打开</button>';
+      html += '<button class="btn-sm open" onclick="openFile(\'' + escapeJs(h.filepath) + '\')">&#128194; æå¼</button>';
     }
-    html += '<button class="btn-sm copy" onclick="copyUrl(\'' + escapeJs(h.url) + '\')">&#128203; 复制</button>';
+    html += '<button class="btn-sm copy" onclick="copyUrl(\'' + escapeJs(h.url) + '\')">&#128203; å¤å¶</button>';
     html += '<button class="btn-sm delete" onclick="deleteRecord(\'' + h.id + '\')">&#128465;&#65039;</button>';
     html += '</div>';
     html += '</div>';
@@ -1918,20 +1922,20 @@ async function deleteRecord(id) {
       body: JSON.stringify({id: id})
     });
     loadHistory();
-    showToast('记录已删除', 'success');
+    showToast('è®°å½å·²å é¤', 'success');
   } catch (e) {
-    showToast('删除失败', 'error');
+    showToast('å é¤å¤±è´¥', 'error');
   }
 }
 
 async function clearHistory() {
-  if (!confirm('确定要清空全部历史记录吗？')) return;
+  if (!confirm('ç¡®å®è¦æ¸ç©ºå¨é¨åå²è®°å½åï¼')) return;
   try {
     await fetch('/api/history/clear', {method: 'POST'});
     loadHistory();
-    showToast('历史已清空', 'success');
+    showToast('åå²å·²æ¸ç©º', 'success');
   } catch (e) {
-    showToast('清空失败', 'error');
+    showToast('æ¸ç©ºå¤±è´¥', 'error');
   }
 }
 
@@ -1944,7 +1948,7 @@ async function openFile(filepath) {
       body: JSON.stringify({filepath: filepath})
     });
   } catch (e) {
-    showToast('无法打开文件', 'error');
+    showToast('æ æ³æå¼æä»¶', 'error');
   }
 }
 
@@ -1952,13 +1956,13 @@ async function openFolder() {
   try {
     await fetch('/api/open_folder', {method: 'POST'});
   } catch (e) {
-    showToast('无法打开文件夹', 'error');
+    showToast('æ æ³æå¼æä»¶å¤¹', 'error');
   }
 }
 
 function copyUrl(url) {
   navigator.clipboard.writeText(url).then(function() {
-    showToast('链接已复制!', 'success');
+    showToast('é¾æ¥å·²å¤å¶!', 'success');
   }).catch(function() {
     var ta = document.createElement('textarea');
     ta.value = url;
@@ -1966,7 +1970,7 @@ function copyUrl(url) {
     ta.select();
     document.execCommand('copy');
     document.body.removeChild(ta);
-    showToast('链接已复制!', 'success');
+    showToast('é¾æ¥å·²å¤å¶!', 'success');
   });
 }
 
@@ -2023,9 +2027,9 @@ function formatTime(isoStr) {
     var d = new Date(isoStr);
     var now = new Date();
     var diff = now - d;
-    if (diff < 60000) return '刚刚';
-    if (diff < 3600000) return Math.floor(diff/60000) + ' 分钟前';
-    if (diff < 86400000) return Math.floor(diff/3600000) + ' 小时前';
+    if (diff < 60000) return 'åå';
+    if (diff < 3600000) return Math.floor(diff/60000) + ' åéå';
+    if (diff < 86400000) return Math.floor(diff/3600000) + ' å°æ¶å';
     var month = (d.getMonth()+1).toString().padStart(2,'0');
     var day = d.getDate().toString().padStart(2,'0');
     var hour = d.getHours().toString().padStart(2,'0');
@@ -2040,9 +2044,9 @@ function formatTime(isoStr) {
 var UPGRADE_URL = 'https://translookdown.com/#pricing';
 
 function showUpgradeModal(title, body, cta) {
-  document.getElementById('ucTitle').textContent = title || '需要 Pro';
-  document.getElementById('ucBody').textContent  = body  || '升级解锁更多功能。';
-  document.getElementById('ucCta').textContent   = cta   || '升级 Pro · $19/年';
+  document.getElementById('ucTitle').textContent = title || 'éè¦ Pro';
+  document.getElementById('ucBody').textContent  = body  || 'åçº§è§£éæ´å¤åè½ã';
+  document.getElementById('ucCta').textContent   = cta   || 'åçº§ Pro Â· $19/å¹´';
   document.getElementById('upgradeOverlay').classList.add('show');
 }
 function closeUpgradeModal(e) {
@@ -2067,8 +2071,8 @@ function toggleLicensePanel() {
 
 function activateLicense() {
   var key = document.getElementById('licKeyInput').value.trim();
-  if (!key) { setLicStatus('请输入 License Key'); return; }
-  setLicStatus('验证中...');
+  if (!key) { setLicStatus('è¯·è¾å¥ License Key'); return; }
+  setLicStatus('éªè¯ä¸­...');
   fetch('/api/license/activate', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
@@ -2081,10 +2085,10 @@ function activateLicense() {
       updatePlanBadge(data.plan);
       showLicActiveView(data.plan);
     } else {
-      setLicStatus('❌ ' + data.message);
+      setLicStatus('â ' + data.message);
     }
   })
-  .catch(() => setLicStatus('❌ 网络错误，请重试'));
+  .catch(() => setLicStatus('â ç½ç»éè¯¯ï¼è¯·éè¯'));
 }
 
 function deactivateLicense() {
@@ -2092,7 +2096,7 @@ function deactivateLicense() {
   .then(() => {
     updatePlanBadge('free');
     showLicActivateView();
-    setLicStatus('已退出登录');
+    setLicStatus('å·²éåºç»å½');
   });
 }
 
@@ -2104,7 +2108,7 @@ function showLicActiveView(plan) {
   document.getElementById('licActivateView').style.display = 'none';
   document.getElementById('licActiveView').style.display   = 'block';
   document.getElementById('licActiveLabel').textContent =
-    (plan === 'team' ? 'Team' : 'Pro') + ' 已激活 ✓';
+    (plan === 'team' ? 'Team' : 'Pro') + ' å·²æ¿æ´» â';
 }
 
 function showLicActivateView() {
@@ -2118,9 +2122,9 @@ function updatePlanBadge(plan) {
   var icon  = document.getElementById('planBadgeIcon');
   var text  = document.getElementById('planBadgeText');
   badge.className = 'plan-badge ' + (plan || 'free');
-  if (plan === 'pro')  { icon.textContent = '⭐'; text.textContent = 'PRO'; }
-  else if (plan === 'team') { icon.textContent = '👑'; text.textContent = 'TEAM'; }
-  else                 { icon.textContent = '🔓'; text.textContent = 'FREE'; }
+  if (plan === 'pro')  { icon.textContent = 'â­'; text.textContent = 'PRO'; }
+  else if (plan === 'team') { icon.textContent = 'ð'; text.textContent = 'TEAM'; }
+  else                 { icon.textContent = 'ð'; text.textContent = 'FREE'; }
 }
 
 // ===== Freemium: Handle upgrade_required from API =====
@@ -2146,6 +2150,33 @@ function handleDownloadResponse(data) {
 })();
 
 </script>
+
+    <!-- v5.0 update modal -->
+    <div id="update-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+      <div style="background:#fff;border-radius:16px;padding:28px 32px;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.18);">
+        <div style="font-size:22px;font-weight:700;margin-bottom:8px;">🦥 发现新版本！</div>
+        <div style="color:#555;margin-bottom:16px;">TranslookDown <span id="upd-ver" style="color:#4e9a51;font-weight:600;"></span> 已发布。</div>
+        <div id="upd-body" style="background:#f5f5f5;border-radius:8px;padding:10px 14px;font-size:13px;color:#333;max-height:120px;overflow:auto;margin-bottom:20px;white-space:pre-line;"></div>
+        <div style="display:flex;gap:12px;justify-content:flex-end;">
+          <button onclick="document.getElementById('update-modal').style.display='none'" style="padding:8px 20px;border:1.5px solid #ccc;background:#fff;border-radius:8px;cursor:pointer;">以后再说</button>
+          <button id="upd-btn" style="padding:8px 20px;background:#4e9a51;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;">立即更新</button>
+        </div>
+      </div>
+    </div>
+    <script>
+    (function(){
+      setTimeout(function(){
+        fetch("/api/check_update").then(function(r){return r.json();}).then(function(d){
+          if(d.has_update){
+            document.getElementById("upd-ver").textContent=d.latest;
+            document.getElementById("upd-body").textContent=d.body||"";
+            document.getElementById("upd-btn").onclick=function(){window.open(d.url,"_blank");};
+            document.getElementById("update-modal").style.display="flex";
+          }
+        }).catch(function(){});
+      },3000);
+    })();
+    </script>
 </body>
 </html>"""
 
@@ -2154,12 +2185,35 @@ function handleDownloadResponse(data) {
 # Main Entry Point
 # ============================================================
 
+def check_update_async():
+    """后台检查 GitHub 是否有新版本"""
+    import threading as _thr, urllib.request as _ureq, json as _json
+    def _do():
+        try:
+            url = "https://api.github.com/repos/" + GITHUB_REPO + "/releases/latest"
+            req = _ureq.Request(url, headers={"User-Agent": "TranslookDown/" + APP_VERSION})
+            with _ureq.urlopen(req, timeout=10) as resp:
+                data = _json.loads(resp.read())
+                latest = data.get("tag_name","").lstrip("v")
+                _update_info["latest"] = latest
+                _update_info["url"] = data.get("html_url","")
+                _update_info["has_update"] = latest != APP_VERSION
+                _update_info["body"] = data.get("body","")[:300]
+        except Exception as e:
+            _update_info["error"] = str(e)
+    _thr.Thread(target=_do, daemon=True).start()
+
+@app.route("/api/check_update")
+def api_check_update():
+    return jsonify(_update_info)
+
 def main():
+    check_update_async()
     # Step 1: Extract bundled binaries
     print("=" * 50)
-    print("  TranslookDown V4 - Standalone Edition")
+    print("  TranslookDown V5 - Standalone Edition")
     print("=" * 50)
-    print("  正在初始化工具...")
+    print("  æ­£å¨åå§åå·¥å·...")
     bundle = setup_environment()
 
     ytdlp = get_ytdlp_path()
@@ -2168,10 +2222,10 @@ def main():
 
     print(f"  yt-dlp: {ytdlp}")
     print(f"  ffmpeg: {ffmpeg}")
-    print(f"  下载目录: {download_dir}")
-    print(f"  历史文件: {get_history_path()}")
+    print(f"  ä¸è½½ç®å½: {download_dir}")
+    print(f"  åå²æä»¶: {get_history_path()}")
     print("=" * 50)
-    print("  正在启动...")
+    print("  æ­£å¨å¯å¨...")
 
     # Verify yt-dlp exists
     if not os.path.exists(ytdlp):
@@ -2200,7 +2254,7 @@ def main():
     import webview
 
     webview.create_window(
-        title="TranslookDown V4",
+        title="TranslookDown V5",
         url=f"http://localhost:{PORT}",
         width=960,
         height=640,
