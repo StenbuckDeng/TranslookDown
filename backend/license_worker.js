@@ -79,7 +79,17 @@ async function handleVerify(request, env) {
   }
   if (action === "activate") {
     const maxDevices = licenseData.plan === "team" ? 5 : 1;
-    const devices = licenseData.devices KV.put(
+    const devices = licenseData.devices || [];
+    if (!devices.includes(fingerprint)) {
+      if (devices.length >= maxDevices) {
+        return jsonResp({
+          valid: false,
+          message: `设备数已达上限（${maxDevices} 台）`,
+        });
+      }
+      devices.push(fingerprint);
+      const putOpts = licenseData.ttl ? { expirationTtl: licenseData.ttl } : {};
+      await env.LICENSE_KV.put(
         `license:${key}`,
         JSON.stringify({ ...licenseData, devices }),
         putOpts
@@ -228,13 +238,8 @@ function api(path,opts){var ctrl=new AbortController();var tid=setTimeout(()=>ct
 function renderList(lics){if(!lics||!lics.length){document.getElementById('list').innerHTML='<div class="empty">暂无 License</div>';return;}document.getElementById('list').innerHTML='<table><thead><tr><th>License Key</th><th>套餐</th><th>到期</th><th>设备</th><th>邮箱</th><th>操作</th></tr></thead><tbody>'+lics.map(l=>'<tr><td style="font-family:monospace;font-weight:600">'+l.key+'</td><td><span class="tag '+l.plan+'">'+l.plan.toUpperCase()+'</span></td><td>'+l.expires_str+'</td><td>'+l.devices+'/'+l.max_devices+'</td><td>'+(l.email||'—')+'</td><td><button class="btn btn-sm btn-d" onclick="revoke(\''+l.key+'\')">吊销</button></td></tr>').join('')+'</tbody></table>';}
 function generate(){var b=document.getElementById('genBtn');b.disabled=true;b.textContent='生成中...';api('/admin/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plan:document.getElementById('plan').value,years:parseInt(document.getElementById('years').value),email:document.getElementById('email').value})}).then(d=>{b.disabled=false;b.textContent='生成 License';if(d.key){lastKey=d.key;document.getElementById('keyTxt').textContent=d.key;document.getElementById('keyMeta').textContent=d.plan.toUpperCase()+' · 到期：'+d.expires_str+(d.email?' · '+d.email:'');document.getElementById('result').style.display='block';toast('✅ License 已生成，按"刷新"或重新打开页面可见列表');}else toast('❌ '+(d.error||'失败'));}).catch(e=>{b.disabled=false;b.textContent='生成 License';toast('❌ '+(e.message||'请求失败'));});}
 function copyKey(){navigator.clipboard.writeText(lastKey).then(()=>toast('✅ 已复制：'+lastKey));}
-function loadList();document.getElementById('list').innerHTML='<div class="empty">加载中...</div>';api('/admin/list').then(d=>{renderList(d.licenses||[]);}).catch(e=>{document.getElementById('list').innerHTML='<div class="empty">❌ 加载失败：'+e.message+'</div>';});}
+function loadList(){document.getElementById('list').innerHTML='<div class="empty">加载中...</div>';api('/admin/list').then(d=>{renderList(d.licenses||[]);}).catch(e=>{document.getElementById('list').innerHTML='<div class="empty">❌ 加载失败：'+e.message+'</div>';});}
 function revoke(key){if(!confirm('确认吊销 '+key+'？'))return;api('/admin/revoke',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key})}).then(d=>{if(d.ok){toast('✅ 已吊销');location.reload();}else toast('❌ 失败');}).catch(e=>{toast('❌ '+e.message);});}
-function logout(){sessionStorage.removeItem('admpwd');location.href='/admin';}
-function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),3000);}
-renderList(INITIAL_LICENSES);
-<\/script></body></html>`;
-ation.reload();}else toast('❌ 失败');}).catch(e=>{toast('❌ '+e.message);});}
 function logout(){sessionStorage.removeItem('admpwd');location.href='/admin';}
 function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),3000);}
 renderList(INITIAL_LICENSES);
