@@ -220,7 +220,7 @@ const ADMIN_HTML = `<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><
 var pwd=new URLSearchParams(location.search).get('pwd')||sessionStorage.getItem('admpwd');
 if(pwd)sessionStorage.setItem('admpwd',pwd);
 var lastKey='';
-function api(path,opts){return fetch(path+(path.includes('?')?'&':'?')+'pwd='+encodeURIComponent(pwd),opts||{}).then(r=>{var ct=r.headers.get('content-type')||'';if(ct.includes('text/html')){sessionStorage.removeItem('admpwd');setTimeout(()=>location.href='/admin',1500);throw new Error('密码已变更，即将跳转登录页…');}return r.json();});}
+function api(path,opts){var ctrl=new AbortController();var tid=setTimeout(()=>ctrl.abort(),8000);var o=Object.assign({},opts||{},{signal:ctrl.signal});return fetch(path+(path.includes('?')?'&':'?')+'pwd='+encodeURIComponent(pwd),o).then(r=>{clearTimeout(tid);var ct=r.headers.get('content-type')||'';if(ct.includes('text/html')){sessionStorage.removeItem('admpwd');setTimeout(()=>location.href='/admin',1500);throw new Error('密码已变更，即将跳转登录页…');}return r.json();}).catch(e=>{clearTimeout(tid);throw e.name==='AbortError'?new Error('网络超时，请检查网络后重试'):e;});}
 function generate(){
   var b=document.getElementById('genBtn');
   b.disabled=true;b.textContent='生成中...';
