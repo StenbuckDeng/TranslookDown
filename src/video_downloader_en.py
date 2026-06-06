@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-TranslookDown V4 - Animal Island Theme (Standalone Edition)
+TranslookDown V5 - Animal Island Theme (Standalone Edition)
 A fully standalone video downloader with embedded browser and all dependencies.
 Usage: python video_downloader_en.py
 Package: pyinstaller --onefile --name TranslookDown video_downloader_en.py
@@ -88,6 +88,10 @@ HISTORY_FILE = "download_history.json"
 MAX_HISTORY = 200
 HOST = "127.0.0.1"
 PORT = 5000
+APP_VERSION = "5.0.0"
+GITHUB_REPO = "StenbuckDeng/TranslookDown"
+_update_info = {}
+
 
 # ============================================================
 # Global State
@@ -462,7 +466,7 @@ def api_qr():
 
 
 # ============================================================
-# Embedded HTML/CSS/JS Frontend (Animal Island Theme - V4)
+# Embedded HTML/CSS/JS Frontend (Animal Island Theme - V5)
 # ============================================================
 
 HTML_PAGE = r"""<!DOCTYPE html>
@@ -470,7 +474,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TranslookDown V4</title>
+<title>TranslookDown V5</title>
 <style>
 /* ===== Reset & Base ===== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1176,7 +1180,7 @@ body {
         <circle cx="48" cy="50" r="1.5" fill="#C4A265"/>
         <circle cx="30" cy="54" r="2.5" fill="#C4A265"/>
       </svg>
-      <h1>&#128560; TranslookDown <span class="version-badge">V4</span></h1>
+      <h1>&#128560; TranslookDown <span class="version-badge">V5</span></h1>
     </div>
     <div class="header-right">
       <div class="time-widget-inline">
@@ -1740,6 +1744,33 @@ function formatTime(isoStr) {
   }
 }
 </script>
+
+    <!-- v5.0 update modal -->
+    <div id="update-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+      <div style="background:#fff;border-radius:16px;padding:28px 32px;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.18);">
+        <div style="font-size:22px;font-weight:700;margin-bottom:8px;">🦥 New Version Available!</div>
+        <div style="color:#555;margin-bottom:16px;">TranslookDown <span id="upd-ver" style="color:#4e9a51;font-weight:600;"></span> is now available.</div>
+        <div id="upd-body" style="background:#f5f5f5;border-radius:8px;padding:10px 14px;font-size:13px;color:#333;max-height:120px;overflow:auto;margin-bottom:20px;white-space:pre-line;"></div>
+        <div style="display:flex;gap:12px;justify-content:flex-end;">
+          <button onclick="document.getElementById('update-modal').style.display='none'" style="padding:8px 20px;border:1.5px solid #ccc;background:#fff;border-radius:8px;cursor:pointer;">Later</button>
+          <button id="upd-btn" style="padding:8px 20px;background:#4e9a51;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;">Update Now</button>
+        </div>
+      </div>
+    </div>
+    <script>
+    (function(){
+      setTimeout(function(){
+        fetch("/api/check_update").then(function(r){return r.json();}).then(function(d){
+          if(d.has_update){
+            document.getElementById("upd-ver").textContent=d.latest;
+            document.getElementById("upd-body").textContent=d.body||"";
+            document.getElementById("upd-btn").onclick=function(){window.open(d.url,"_blank");};
+            document.getElementById("update-modal").style.display="flex";
+          }
+        }).catch(function(){});
+      },3000);
+    })();
+    </script>
 </body>
 </html>"""
 
@@ -1748,10 +1779,33 @@ function formatTime(isoStr) {
 # Main Entry Point
 # ============================================================
 
+def check_update_async():
+    """Check GitHub for new version in background"""
+    import threading as _thr, urllib.request as _ureq, json as _json
+    def _do():
+        try:
+            url = "https://api.github.com/repos/" + GITHUB_REPO + "/releases/latest"
+            req = _ureq.Request(url, headers={"User-Agent": "TranslookDown/" + APP_VERSION})
+            with _ureq.urlopen(req, timeout=10) as resp:
+                data = _json.loads(resp.read())
+                latest = data.get("tag_name","").lstrip("v")
+                _update_info["latest"] = latest
+                _update_info["url"] = data.get("html_url","")
+                _update_info["has_update"] = latest != APP_VERSION
+                _update_info["body"] = data.get("body","")[:300]
+        except Exception as e:
+            _update_info["error"] = str(e)
+    _thr.Thread(target=_do, daemon=True).start()
+
+@app.route("/api/check_update")
+def api_check_update():
+    return jsonify(_update_info)
+
 def main():
+    check_update_async()
     # Step 1: Extract bundled binaries
     print("=" * 50)
-    print("  TranslookDown V4 - Standalone Edition")
+    print("  TranslookDown V5 - Standalone Edition")
     print("=" * 50)
     print("  Initializing tools...")
     bundle = setup_environment()
@@ -1794,7 +1848,7 @@ def main():
     import webview
 
     webview.create_window(
-        title="TranslookDown V4",
+        title="TranslookDown V5",
         url=f"http://localhost:{PORT}",
         width=960,
         height=640,
