@@ -50,6 +50,11 @@ jobs:
             --hidden-import "qrcode" \
             src/video_downloader.py
 
+
+      - name: Fix ATS for localhost HTTP
+        run: |
+          /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity dict" dist/TranslookDown.app/Contents/Info.plist 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity:NSAllowsLocalNetworking bool true" dist/TranslookDown.app/Contents/Info.plist
       - name: Zip .app
         run: |
           cd dist
